@@ -1,0 +1,42 @@
+# KneadData v0.10.0
+srun singularity run $SINGULARITY_FOLDER/kneaddata.sif kneaddata \
+    --threads 128 \
+    -i /scratch/users/zzhou/input/{}_R1.fastq.gz \
+    -i /scratch/users/zzhou/input/{}_R2.fastq.gz \
+    --cat-final-output --serial \
+    -o /scratch/users/zzhou/kneaddata \
+    -db /db1 \
+    -db /db2
+
+
+# MetaPhlAn v4.0.6
+conda create --name metaphlan python=3.7
+conda activate metaphlan
+srun -c 128 metaphlan /scratch/users/zzhou/kneaddata/{}.fastq \
+    --nproc 128 \
+    --input_type fastq \
+    -o /scratch/users/zzhou/metaphlan/{}.txt
+
+
+# HUMAnN v3.8 
+conda create --name biobakery3 python=3.7
+conda activate biobakery3
+pip install humann 
+
+humann_config --update database_folders nucleotide /home/users/zzhou/HUMAnN/chocophlan_n
+humann_config --update database_folders protein /home/users/zzhou/HUMAnN/uniref
+humann_config --update database_folders utility_mapping /home/users/zzhou/HUMAnN/utility_mapping
+
+srun -c 128 humann \
+    --threads 128 \
+    --input /scratch/users/zzhou/kneaddata/{}.fastq \
+    --output /scratch/users/zzhou/humann \
+    --remove-temp-output
+
+
+# merge documents
+merge_metaphlan_tables.py *_1_kneaddata.txt > 0_metaDNA_metaphlan4_abundance_all_zy.txt
+
+humann_join_tables --input /scratch/users/zzhou/humann --output metaDNA_humann3.8_pathabundance_relab.tsv --file_name pathabundance_relab
+humann_join_tables --input /scratch/users/zzhou/humann --output metaDNA_humann3.8_pathabundance_cpm.tsv --file_name pathabundance_cpm
+humann_join_tables --input /scratch/users/zzhou/humann --output metaDNA_humann3.8_pathcoverage.tsv --file_name pathcoverage
