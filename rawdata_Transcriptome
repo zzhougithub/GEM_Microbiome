@@ -1,24 +1,19 @@
 library(Rsubread)
 setwd("~/Documents/fastq/")
 
-# single-end data
 align(index="./my_index",readfile1="Cecum_001_CECUM_GEM_S1_R1_001.fastq.gz" ,output_file="Cecum_001_CECUM_GEM_S1_R1_001.bam",output_format="BAM")
-
-# paired-end data
-align(index="./my_index",readfile1="Cecum_008_metaRNA_CECUM_GEM_S32_R1_001.fastq.gz", readfile2="Cecum_008_metaRNA_CECUM_GEM_S32_R2_001.fastq.gz" ,output_file="Cecum_008_metaRNA_CECUM_GEM_S32.bam",output_format="BAM", nthreads=6)
-
 
 gtf <- list.files("fastq",pattern="*.gtf",full.names = T)
 fc <- featureCounts(files = c("Cecum_001_CECUM_GEM_S1_R1_001.bam","Cecum_030_CECUM_GEM_S16_R1_001.bam","Cecum_050_CECUM_GEM_S10_R1_001.bam","Cecum_070_CECUM_GEM_S7_R1_001.bam","Cecum_008_drna_CECUM_GEM_S1_R1_001.bam","Cecum_031_CECUM_GEM_S17_R1_001.bam","Cecum_051_drna_CECUM_GEM_S11_R1_001.bam","Cecum_071_drna_CECUM_GEM_S14_R1_001.bam","Cecum_009_drna_CECUM_GEM_S2_R1_001.bam","Cecum_032_CECUM_GEM_S18_R1_001.bam","Cecum_052_CECUM_GEM_S11_R1_001.bam","Cecum_072_CECUM_GEM_S8_R1_001.bam","Cecum_010_CECUM_GEM_S2_R1_001.bam","Cecum_033_drna_CECUM_GEM_S5_R1_001.bam","Cecum_053_drna_CECUM_GEM_S12_R1_001.bam","Cecum_073_CECUM_GEM_S9_R1_001.bam","Cecum_011_CECUM_GEM_S3_R1_001.bam","Cecum_034_CECUM_GEM_S19_R1_001.bam","Cecum_054_CECUM_GEM_S12_R1_001.bam","Cecum_074_drna_CECUM_GEM_S15_R1_001.bam","Cecum_014_CECUM_GEM_S4_R1_001.bam","Cecum_035_drna_CECUM_GEM_S6_R1_001.bam","Cecum_055_CECUM_GEM_S13_R1_001.bam","Cecum_076_CECUM_GEM_S10_R1_001.bam","Cecum_015_CECUM_GEM_S20_R1_001.bam","Cecum_036_drna_CECUM_GEM_S7_R1_001.bam","Cecum_056_CECUM_GEM_S14_R1_001.bam","Cecum_078_drna_CECUM_GEM_S16_R1_001.bam","Cecum_016_drna_CECUM_GEM_S3_R1_001.bam","Cecum_037_CECUM_GEM_S20_R1_001.bam","Cecum_057_CECUM_GEM_S15_R1_001.bam","Cecum_079_CECUM_GEM_S11_R1_001.bam","Cecum_018_CECUM_GEM_S5_R1_001.bam","Cecum_038_CECUM_GEM_S1_R1_001.bam","Cecum_058_CECUM_GEM_S16_R1_001.bam","Cecum_080_CECUM_GEM_S12_R1_001.bam","Cecum_019_CECUM_GEM_S6_R1_001.bam","Cecum_039_CECUM_GEM_S2_R1_001.bam","Cecum_059_drna_CECUM_GEM_S13_R1_001.bam","Cecum_081_CECUM_GEM_S13_R1_001.bam","Cecum_020_CECUM_GEM_S7_R1_001.bam","Cecum_040_drna_CECUM_GEM_S8_R1_001.bam","Cecum_060_CECUM_GEM_S17_R1_001.bam","Cecum_082_CECUM_GEM_S14_R1_001.bam","Cecum_021_CECUM_GEM_S8_R1_001.bam","Cecum_041_drna_CECUM_GEM_S9_R1_001.bam","Cecum_061_CECUM_GEM_S18_R1_001.bam","Cecum_083_drna_CECUM_GEM_S17_R1_001.bam","Cecum_022_CECUM_GEM_S9_R1_001.bam","Cecum_042_CECUM_GEM_S3_R1_001.bam","Cecum_062_CECUM_GEM_S19_R1_001.bam","Cecum_084_drna_CECUM_GEM_S18_R1_001.bam","Cecum_023_drna_CECUM_GEM_S4_R1_001.bam","Cecum_043_drna_CECUM_GEM_S10_R1_001.bam","Cecum_063_CECUM_GEM_S20_R1_001.bam","Cecum_085_drna_CECUM_GEM_S19_R1_001.bam","Cecum_024_CECUM_GEM_S10_R1_001.bam","Cecum_044_CECUM_GEM_S4_R1_001.bam","Cecum_064_CECUM_GEM_S1_R1_001.bam","Cecum_086_CECUM_GEM_S15_R1_001.bam","Cecum_025_CECUM_GEM_S11_R1_001.bam","Cecum_045_CECUM_GEM_S5_R1_001.bam","Cecum_065_CECUM_GEM_S2_R1_001.bam","Cecum_088_CECUM_GEM_S16_R1_001.bam","Cecum_026_CECUM_GEM_S12_R1_001.bam","Cecum_046_CECUM_GEM_S6_R1_001.bam","Cecum_066_CECUM_GEM_S3_R1_001.bam","Cecum_089_CECUM_GEM_S17_R1_001.bam","Cecum_027_CECUM_GEM_S13_R1_001.bam","Cecum_047_CECUM_GEM_S7_R1_001.bam","Cecum_067_CECUM_GEM_S4_R1_001..bam","Cecum_091_CECUM_GEM_S18_R1_001..bam","Cecum_028_CECUM_GEM_S14_R1_001..bam","Cecum_048_CECUM_GEM_S8_R1_001..bam","Cecum_068_CECUM_GEM_S5_R1_001..bam","Cecum_092_CECUM_GEM_S19_R1_001..bam","Cecum_029_CECUM_GEM_S15_R1_001..bam","Cecum_049_CECUM_GEM_S9_R1_001..bam","Cecum_069_CECUM_GEM_S6_R1_001..bam","Cecum_093_drna_CECUM_GEM_S20_R1_001.bam"),GTF.featureType="exon",GTF.attrType="gene_name", annot.ext=gtf, isGTFAnnotationFile=TRUE )
 save(fc, file="20210713_Cecum_WholeGenomeMouse_First80Samples_RNAseq_WholeCounts.RData")
-write.csv(fc$counts,"20210713_Cecum_WholeGenome_Annotation.csv")
-write.csv(fc$annotation,"20210713_Cecum_WholeGenome_Counts.csv")
+write.csv(fc$counts,"S2_mRNA_cecum_raw_Annotation_zy.csv")
+write.csv(fc$annotation,"S2_mRNA_cecum_raw_counts_zy.csv")
 
 library(tximport) 
-count_data <- read.csv("20210713_Cecum_WholeGenome_Counts.csv",row.names=1, header=T,sep=",")
-gene_length_data <- read.csv("20210713_Cecum_WholeGenome_Annotation.csv") 
+count_data <- read.csv("S2_mRNA_cecum_raw_counts_zy.csv",row.names=1, header=T,sep=",")
+gene_length_data <- read.csv("S2_mRNA_cecum_raw_Annotation_zy.csv") 
 read_length_per_sample <- seq(75, 75, length.out=ncol(count_data))
 
 source("counts_to_tpm.R")
-TPM_data=counts_to_tpm(count_data,gene_length_data$Length,read_length_per_sample)
-write.csv(TPM_data,"20210713_Cecum_WholeGenome_Counts_TPM.csv")
+TPM_data <- counts_to_tpm(count_data,gene_length_data$Length,read_length_per_sample)
+write.csv(TPM_data,"S3_mRNA_cecum_TPMLog2_zy.csv")
