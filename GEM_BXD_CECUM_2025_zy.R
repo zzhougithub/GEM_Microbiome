@@ -48,10 +48,10 @@ mRNA_pre <- BXD.Data.Pre(df = mRNAlog2, datatype = "mRNA")
 BXD.Anova.plot(mRNA_pre, metadata)
 BXD.Fstat.plot(mRNA_pre, metadata)
 
-MG_pre <- BXD.Data.Pre(df = MGabun, datatype = "MG", taxlevel = "species")
+MG_pre <- BXD.Data.Pre(df = MGabun, datatype = "abundance", taxlevel = "species")
 BXD.Anova.plot(MG_pre, metadata)
 
-MT_pre <- BXD.Data.Pre(df = MTabun, datatype = "MT", taxlevel = "species")
+MT_pre <- BXD.Data.Pre(df = MTabun, datatype = "abundance", taxlevel = "species")
 BXD.Anova.plot(MT_pre, metadata)
 
 
@@ -67,12 +67,18 @@ BXD.ORA.plot(degDiet, 15)
 
 
 ############### Fig2 B&C 
-MG_phyl <- BXD.Data.Pre(df = MGabun, datatype = "MG", taxlevel = "phylum")
+MG_phyl <- BXD.Data.Pre(df = MGabun, datatype = "abundance", taxlevel = "phylum")
 BXD.Ratio.plot(MG_phyl, metadata, "p__Firmicutes", "p__Bacteroidetes")
 
 
 ############### Fig2 D &  Fig3 A
+MG_genu <- BXD.Data.Pre(df = MGabun, datatype = "abundance", taxlevel = "genus")
+MT_genu <- BXD.Data.Pre(df = MTabun, datatype = "abundance", taxlevel = "genus")
+BXD.Stacked.plot(MG_genu, MT_genu, metadata, "taxonomy", "MG_", "MT_")
 
+MGpath_pre <- BXD.Data.Pre(df = MGpath, datatype = "pathabun")
+MTpath_pre <- BXD.Data.Pre(df = MTpath, datatype = "pathabun")
+BXD.Stacked.plot(MGpath_pre, MTpath_pre, metadata, "Pathway", "MG_", "MT_")
 
 
 ############### Fig1 E-G 
@@ -81,8 +87,6 @@ BXD.Ratio.plot(MG_phyl, metadata, "p__Firmicutes", "p__Bacteroidetes")
 
 ############### Fig3 B 
 ### https://github.com/biobakery/humann
-
-############### Fig3 C&D 
 
 
 

@@ -3,7 +3,7 @@ BXD.Data.Pre <- function(df, datatype, taxlevel) {
     prodata <- na.omit(df)
     prodata[,2:ncol(prodata)] <- as.numeric(unlist(prodata[,2:ncol(prodata)]))
     return(prodata)
-  } else if (datatype %in% c("MG", "MT")) {
+  } else if (datatype == "abundance") {
     prodata <- na.omit(df)
     prodata[,2:ncol(prodata)] <- as.numeric(unlist(prodata[,2:ncol(prodata)]))
     
@@ -22,6 +22,15 @@ BXD.Data.Pre <- function(df, datatype, taxlevel) {
     pattern_remove <- paste0(".*\\|(", pattern_remove, ".+)$")
 
     prodata$taxonomy <- sub(pattern_remove, "\\1", prodata$taxonomy)
+    return(prodata)
+  }  else if (datatype == "pathabun") {
+    prodata <- as.data.frame(df)
+    prodata <- na.omit(prodata)
+    #prodata <- prodata[-c(1:2),]
+    
+    prodata <- prodata[!grepl("^UNMAPPED|^UNINTEGRATED", prodata$Pathway), ]
+    prodata <- prodata[!grepl("\\|", prodata$Pathway), ]
+    prodata[,2:ncol(prodata)] <- as.numeric(unlist(prodata[,2:ncol(prodata)]))
     return(prodata)
   }
 }
@@ -391,5 +400,107 @@ BXD.Ratio.plot <- function(df, meta, tax1, tax2) {
   print(p2)
 }
 
+BXD.Stacked.data <- function(df_sum, meta, classification, top_taxa, dfType) {
+  topN_common <- 10
+  topN_unique <- 15
+  group <- "Diet"
+  
+  df_other <- colSums(df_sum[(!df_sum[[classification]] %in% top_taxa), 2:ncol(df_sum)])
+  df_other <- as.data.frame(df_other)
+  df_other <- t(df_other)
+  df_other <- cbind("Others", df_other)
+  colnames(df_other)[1] <- classification
+  df_sort <- df_sum[(df_sum[[classification]] %in% top_taxa), ]
+  df_sort <- rbind(df_sort, df_other)
+  
+  sub_design <- meta[order(meta$Diet,meta$Age,meta$Strain),]
+  df_idx <- rownames(sub_design) %in% colnames(df_sort) 
+  df_sub_design <- sub_design[df_idx,]
+  df_list <- rownames(df_sub_design)
+  df_sample_order <- c(df_list)
+  df_sub_design$Sample <- rownames(df_sub_design)
+  
+  df_sub_design[,group] <- as.factor(df_sub_design[,group])
+  df_g1 <- levels(df_sub_design[,group])[1]
+  df_g2 <- levels(df_sub_design[,group])[2]
+  df_g1_list <- rownames(df_sub_design[df_sub_design[,group] %in% df_g1,])
+  df_g2_list <- rownames(df_sub_design[df_sub_design[,group] %in% df_g2,])
+  df_sort_g1 <- df_sort[,df_g1_list]
+  df_sort_g2 <- df_sort[,df_g2_list]
+  rownames(df_sort_g1) <- df_sort[,1]
+  rownames(df_sort_g2) <- df_sort[,1]
+  df_sort_g1[1:ncol(df_sort_g1)] <- as.numeric(unlist(df_sort_g1[1:ncol(df_sort_g1)]))
+  df_sort_g2[1:ncol(df_sort_g2)] <- as.numeric(unlist(df_sort_g2[1:ncol(df_sort_g2)]))
+  df_p_val <- NULL
+  for (taxon in rownames(df_sort_g1)) {
+    p <- t.test(df_sort_g1[taxon,], df_sort_g2[taxon,])$p.value
+    df_p_val <- rbind(df_p_val, c(taxon, p))
+  }
+  colnames(df_p_val) <- c("classification", "p")
+  df_p_val <- as.data.frame(df_p_val)
+  df_p_val$p <- as.numeric(format(df_p_val$p, scientific = FALSE))
+  df_p_val <- df_p_val[order(df_p_val$p),]
+  others_row <- which(df_p_val$classification == "Others")
+  df_p_val <- rbind(df_p_val, df_p_val[others_row,])
+  df_p_val <- df_p_val[-others_row,]
+  df_tax_list <- rev(df_p_val[,1])
+  df_tax_order <- c(df_tax_list)
+  
+  df_long <- 
+    pivot_longer(df_sort, 
+                 cols = !all_of(classification),
+                 names_to = "Sample",
+                 values_to = "RA")
+  names(df_long) <- c("classification", "Sample", "RA")
+  df_long[,3] <- as.numeric(unlist(df_long[,3]))
+  df_long <- left_join(df_long, df_sub_design %>% select(Sample, Diet), by = "Sample")
+  df_long$Diet <- paste0(dfType, df_long$Diet)
+  
+  df_long <- df_long %>% 
+    group_by(Sample) %>% 
+    mutate(total = sum(RA)) %>%
+    ungroup() %>%
+    mutate(relative_abundance = RA / total)
+  df_long$classification <- factor(df_long$classification,
+                              levels = df_tax_order)
+  df_long$Sample <- factor(df_long$Sample,
+                            levels = df_sample_order)
 
+  return(df_long)
+}
+
+BXD.Stacked.plot <- function(df1, df2, meta, classification, dfType1, dfType2) {
+  topN_common <- 10
+  topN_unique <- 15
+  group <- "Diet"
+  
+  df1_sum <- df1[(order(-rowSums(df1[,2:ncol(df1)]))),] 
+  df2_sum <- df2[(order(-rowSums(df2[,2:ncol(df2)]))),] 
+  top_common_taxa <- head(intersect(df1[[classification]], df2[[classification]]), topN_common)
+  df1_top_taxa <- setdiff(head(df1_sum[[classification]], topN_unique), top_common_taxa)
+  df2_top_taxa <- setdiff(head(df2_sum[[classification]], topN_unique), top_common_taxa)
+  top_taxa <- c(top_common_taxa, df1_top_taxa, df2_top_taxa)
+  topN <- length(top_taxa) + 1
+
+  df1_long <- BXD.Stacked.data(df1_sum, meta, classification, top_taxa, dfType1)
+  df2_long <- BXD.Stacked.data(df2_sum, meta, classification, top_taxa, dfType2)
+  
+  sum_sort_long <- rbind(df1_long, df2_long)
+  
+  ggplot(sum_sort_long, aes(x = Sample,
+                            y = relative_abundance,
+                            fill = classification,
+                            alluvium = classification
+  )) +
+    geom_bar(position = "fill",
+             stat = "identity",
+             color = "black",
+             size = 0.05,
+             width = 0.7) +
+    scale_y_continuous(expand = c(0, 0), 
+                       labels = scales::percent_format()) +
+    labs(x = "", y = "Relative Abundance [%]") +
+    facet_grid(~Diet, scales = "free_x", space = "free_x") +
+    guides(fill = guide_legend(reverse = TRUE, ncol = 3))
+}
 
