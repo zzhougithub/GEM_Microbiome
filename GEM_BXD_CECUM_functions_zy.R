@@ -170,7 +170,7 @@ BXD.Fstat.plot <- function(df, meta) {
 }
 
 
-BXD.DEG.plot <- function(df, meta, label_n = 20, group = c("Diet", "Age")) {
+BXD.DEG.plot <- function(df, meta, label_n, group = c("Diet", "Age")) {
   group <- match.arg(group)
   rownames(df) <- df[, 1]
   df <- df[, -1]
@@ -252,4 +252,144 @@ BXD.DEG.plot <- function(df, meta, label_n = 20, group = c("Diet", "Age")) {
     invisible(NULL)
   }
 }
+
+BXD.ORA.plot <- function(df, top_n) {
+  df$SYMBOL <- rownames(df) 
+  
+  gene_df <- bitr(df$SYMBOL,
+                  fromType = "SYMBOL",
+                  toType = "ENTREZID",
+                  OrgDb = org.Mm.eg.db)
+  
+  res_annot <- merge(df, gene_df, by = "SYMBOL")
+  res_annot <- res_annot[order(res_annot$ENTREZID), ]
+  
+  deg <- res_annot[res_annot$log2FoldChange > 1 & res_annot$padj < 0.05 |
+                     res_annot$log2FoldChange < -1 & res_annot$padj < 0.05, ]
+  deg_genes <- unique(deg$ENTREZID)
+  
+  set.seed(12345)
+  kegg_ora <- enrichKEGG(gene = deg_genes,
+                         organism = "mmu",
+                         pvalueCutoff = 0.1,
+                         qvalueCutoff = 0.1)
+  kegg_ora <- setReadable(kegg_ora, OrgDb = org.Mm.eg.db, keyType = "ENTREZID")
+  kegg_ora@result$Description <- gsub(" - Mus musculus \\(house mouse\\)", "", kegg_ora@result$Description)
+  
+  top_terms <- kegg_ora@result[order(kegg_ora@result$qvalue), ][1:top_n, ]
+  top_terms$Description <- factor(top_terms$Description,
+                                  levels = rev(top_terms$Description))  
+  
+  ggplot(top_terms, aes(x = RichFactor,
+                        y = Description,
+                        size = Count,
+                        fill = qvalue)) +
+    geom_point(shape = 21,
+               color = "black",
+               aes(fill = qvalue),
+               stroke = 0.3) +
+    coord_cartesian(xlim = c(min(top_terms$RichFactor) - 0.02,
+                             max(top_terms$RichFactor) + 0.02)) +
+    theme_minimal(base_size = 14) +
+    labs(x = "Rich Factor", y = "", size = "Gene Number") +
+    theme(axis.text.y = element_text(size = 12, color = "black"),
+          axis.text.x = element_text(size = 12, color = "black"),
+          axis.title = element_text(color = "black"),
+          plot.title = element_text(face = "bold", hjust = 0.5, color = "black"),
+          panel.border = element_rect(color = "black", fill = NA, size = 0.5),
+          panel.grid = element_line(color = "grey90"),
+          axis.ticks = element_line(color = "black", size = 0.3),
+          axis.ticks.length = unit(0.1, "cm"))
+}
+
+
+BXD.Ratio.plot <- function(df, meta, tax1, tax2) {
+  df_T1 <- df[grep(paste0("^", tax1), df$taxonomy), ]
+  df_T2 <- df[grep(paste0("^", tax2), df$taxonomy), ]
+  
+  T1T2_Ratio <- df_T1[, 2:ncol(df_T1)] / df_T2[, 2:ncol(df_T2)]
+  t1t2name <- paste0(tax1, "/", tax2)
+  T1T2_Ratio <- cbind(taxonomy = t1t2name, T1T2_Ratio)
+  T1T2R <- rbind(df, T1T2_Ratio)
+  
+  meta$sample <- rownames(meta)
+  
+  T1T2R_long <- 
+    pivot_longer(T1T2R, 
+                 cols = -contains("taxonomy"), # columns argument, required
+                 names_to = "sample",
+                 values_to = "abundance")
+  
+  T1T2R_long <- left_join(T1T2R_long,
+                          meta %>%
+                            select(sample, Diet, TIMEonDIET, Age_group, Age),
+                          by = "sample")
+  T1T2R_long$agediet <- paste(T1T2R_long$Age_group, T1T2R_long$Diet, sep = "_")
+  
+  T1T2R <- T1T2R_long %>% subset(taxonomy == t1t2name)
+  
+  p1 <- ggplot(T1T2R, aes(x = Diet, y = abundance, fill = Diet)) +
+    geom_jitter(aes(col = Diet),
+                alpha = 0.7, 
+                size = 4,
+                position = position_jitterdodge(jitter.width = 0.35,
+                                                jitter.height = 0,
+                                                dodge.width = 0.8)) +
+    geom_boxplot(width=0.5,
+                 alpha = 0.4,
+                 position = position_dodge(0.1),
+                 size = 0.4, outlier.colour = NA, fill = 'white') +
+    theme_bw()+
+    theme(panel.grid = element_blank())+
+    scale_y_continuous(limits = c(0,25), breaks = c(0,5,10,20)) +
+    scale_color_manual(values = c('#56B4E9','#E2BE35')) +
+    stat_compare_means(aes(group= Diet),
+                       comparisons = list(c("CD", "HF")),
+                       method = "t.test",
+                       label="p.value",   
+                       label.x = 1.4,
+                       label.y = 0.95)+
+    labs(x = "", y = "Ratio") +
+    theme(
+      legend.position = "none",
+      axis.text.x = element_text(size = 16),
+      axis.text.y = element_text(size = 16),
+      axis.title = element_text(size = 16), 
+      legend.text = element_text(size = 16),
+      legend.title = element_text(size = 16)) 
+  
+  p2 <- ggplot(T1T2R, aes(x = agediet, y = abundance, fill = Diet)) +
+    geom_jitter(aes(col = Diet),
+                alpha = 0.7, 
+                size = 4,
+                position = position_jitterdodge(jitter.width = 0.35,
+                                                jitter.height = 0,
+                                                dodge.width = 0.8)) +
+    geom_boxplot(width=0.5,
+                 alpha = 0.4,
+                 position = position_dodge(0.1),
+                 size = 0.4, outlier.colour = NA, fill = 'white') +
+    theme_bw()+
+    theme(panel.grid = element_blank())+
+    scale_y_continuous(limits = c(0,25), breaks = c(0,5,10,20)) +
+    scale_color_manual(values = c('#56B4E9','#E2BE35')) +
+    stat_compare_means(aes(group= agediet),
+                       comparisons = list(c("AG1_CD", "AG1_HF"), c("AG2_CD", "AG2_HF"), c("AG3_CD", "AG3_HF"), c("AG4_CD", "AG4_HF")),
+                       method = "t.test",
+                       label="p.value",   
+                       label.x = 1.4,
+                       label.y = 0.95)+
+    labs(x = "", y = "Ratio") +
+    theme(legend.position = "none",
+          axis.text.x = element_text(size = 16),
+          axis.text.y = element_text(size = 16),
+          axis.title = element_text(size = 16), 
+          legend.text = element_text(size = 16),
+          legend.title = element_text(size = 16)) 
+  
+  print(p1)
+  print(p2)
+}
+
+
 

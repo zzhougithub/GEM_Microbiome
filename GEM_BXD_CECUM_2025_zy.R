@@ -1,5 +1,6 @@
 ############### packages
 library(dplyr)
+library(tidyr) 
 library(tidyverse)
 library(outliers)
 library(gplots)
@@ -18,6 +19,14 @@ library(ggpubr)
 library(lemon)
 library(ggsci)
 library(pheatmap)
+library(clusterProfiler)
+library(org.Mm.eg.db)
+library(ReactomePA)
+library(enrichplot)
+library(DOSE)
+library(glue)
+library(scales)
+library(GseaVis)
 
 source("GEM_BXD_CECUM_functions_zy.R")
 
@@ -52,13 +61,14 @@ degDiet <- BXD.DEG.plot(mRNAraw, metadata, label_n = 20, group = "Diet")
 degAge <- BXD.DEG.plot(mRNAraw, metadata, label_n = 20, group = "Age")
 
 
-############### Fig1 H 
-
-
-############### Fig2 A 
+############### Fig1 H  ; FigS2 A
+BXD.ORA.plot(degAgeHF, 15)
+BXD.ORA.plot(degDiet, 15)
 
 
 ############### Fig2 B&C 
+MG_phyl <- BXD.Data.Pre(df = MGabun, datatype = "MG", taxlevel = "phylum")
+BXD.Ratio.plot(MG_phyl, metadata, "p__Firmicutes", "p__Bacteroidetes")
 
 
 ############### Fig2 D &  Fig3 A
