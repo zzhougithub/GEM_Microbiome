@@ -1,3 +1,4 @@
+############# HPC
 # KneadData v0.10.0
 srun singularity run $SINGULARITY_FOLDER/kneaddata.sif kneaddata \
     --threads 128 \
