@@ -401,8 +401,9 @@ BXD.Ratio.plot <- function(df, meta, tax1, tax2) {
 }
 
 BXD.Stacked.data <- function(df_sum, meta, classification, top_taxa, dfType) {
-  topN_common <- 10
-  topN_unique <- 15
+  topN_common <- 25
+  topN_unique_MG <- 25
+  topN_unique_MT <- 20
   group <- "Diet"
   
   df_other <- colSums(df_sum[(!df_sum[[classification]] %in% top_taxa), 2:ncol(df_sum)])
@@ -453,7 +454,7 @@ BXD.Stacked.data <- function(df_sum, meta, classification, top_taxa, dfType) {
                  values_to = "RA")
   names(df_long) <- c("classification", "Sample", "RA")
   df_long[,3] <- as.numeric(unlist(df_long[,3]))
-  df_long <- left_join(df_long, df_sub_design %>% select(Sample, Diet), by = "Sample")
+  df_long <- left_join(df_long, dplyr::select(df_sub_design, Sample, Diet), by = "Sample")
   df_long$Diet <- paste0(dfType, df_long$Diet)
   
   df_long <- df_long %>% 
@@ -471,14 +472,15 @@ BXD.Stacked.data <- function(df_sum, meta, classification, top_taxa, dfType) {
 
 BXD.Stacked.plot <- function(df1, df2, meta, classification, dfType1, dfType2) {
   topN_common <- 10
-  topN_unique <- 15
+  topN_unique_MG <- 25
+  topN_unique_MT <- 20
   group <- "Diet"
   
   df1_sum <- df1[(order(-rowSums(df1[,2:ncol(df1)]))),] 
   df2_sum <- df2[(order(-rowSums(df2[,2:ncol(df2)]))),] 
-  top_common_taxa <- head(intersect(df1[[classification]], df2[[classification]]), topN_common)
-  df1_top_taxa <- setdiff(head(df1_sum[[classification]], topN_unique), top_common_taxa)
-  df2_top_taxa <- setdiff(head(df2_sum[[classification]], topN_unique), top_common_taxa)
+  top_common_taxa <- head(intersect(df1_sum[[classification]], df2_sum[[classification]]), topN_common)
+  df1_top_taxa <- setdiff(head(df1_sum[[classification]], topN_unique_MG), top_common_taxa)
+  df2_top_taxa <- setdiff(head(df2_sum[[classification]], topN_unique_MT), top_common_taxa)
   top_taxa <- c(top_common_taxa, df1_top_taxa, df2_top_taxa)
   topN <- length(top_taxa) + 1
 
