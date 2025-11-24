@@ -60,6 +60,17 @@ BXD.Anova.plot(MT_pre, metadata)
 degDiet <- BXD.DEG.plot(mRNAraw, metadata, label_n = 20, group = "Diet")
 degAge <- BXD.DEG.plot(mRNAraw, metadata, label_n = 20, group = "Age")
 
+#degDiet$signif_rank <- ifelse(degDiet$group == "NS", 1, 0)
+#degDiet_sorted <- degDiet[order(degDiet$signif_rank, 
+#                                -degDiet$log10p,
+#                                decreasing = FALSE), ]
+#degDiet_sorted$signif_rank <- NULL
+#write.table(degDiet_sorted,
+#            file = "degDiet_sorted.txt",
+#            sep = "\t",
+#            quote = FALSE,
+#            col.names = NA)
+
 
 ############### Fig1 H  ; FigS2 A
 BXD.ORA.plot(degAgeHF, 15)

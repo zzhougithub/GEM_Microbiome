@@ -189,28 +189,49 @@ BXD.DEG.plot <- function(df, meta, label_n, group = c("Diet", "Age")) {
   
   plot_volcano <- function(res_df, label_n, plot_title) {
     res_df$group <- dplyr::case_when(
-      res_df$log2FoldChange > 1 & res_df$padj < 0.05 ~ "Up",
-      res_df$log2FoldChange < -1 & res_df$padj < 0.05 ~ "Down",
+      res_df$log2FoldChange > 1 & res_df$pvalue < 0.05 ~ "Up",
+      res_df$log2FoldChange < -1 & res_df$pvalue < 0.05 ~ "Down",
       TRUE ~ "NS"
     )
+    print(table(res_df$group))
+    
+    expr_cutoff <- quantile(res_df$baseMean, 0.75, na.rm = TRUE)
+    print(expr_cutoff)
+    res_df$highExpr <- res_df$baseMean >= expr_cutoff
+    
     res_df$log10p <- -log10(res_df$pvalue)
-    sig_df <- res_df[res_df$group != "NS", ]
+    
+    sig_df <- res_df[res_df$group != "NS" & res_df$highExpr, ]
     label_genes <- rownames(head(sig_df[order(sig_df$pvalue), ], label_n))
     label_df <- res_df[label_genes, , drop = FALSE]
+    
     p <- ggplot(res_df, aes(x = log2FoldChange, y = log10p, fill = group)) +
-      geom_point(shape = 21, color = "black", alpha = ifelse(res_df$group == "NS", 0.2, 0.7), 
+      geom_point(shape = 21, color = "black", 
+                 alpha = ifelse(res_df$group == "NS", 0.2, 0.7), 
                  size = ifelse(res_df$group == "NS", 1.3, 2), stroke = 0.4) +
       scale_fill_manual(values = c("Down" = "#56B4E9", "NS" = "grey80", "Up" = "#E2BE35")) +
+      #scale_fill_manual(values = c("Down" = "#b2e2e2", "NS" = "grey80", "Up" = "#238b45")) +
+      #scale_fill_manual(values = c("Down" = "#fdbe85", "NS" = "grey80", "Up" = "#d94701")) +
       geom_vline(xintercept = c(-1, 1), linetype = "dashed", color = "black", linewidth = 0.4) +
       geom_hline(yintercept = -log10(0.05), linetype = "dotted", color = "black", linewidth = 0.4) +
       ggrepel::geom_label_repel(
         data = label_df, aes(label = rownames(label_df)),
-        fill = "white", alpha = 0.8, color = "black", fontface = "bold",
-        box.padding = 0.35, point.padding = 0.5, label.r = 0.2, label.size = 0.25, size = 3,
-        segment.colour = "#4c4b5e"
+        fill = "white", alpha = 0.8, 
+        color = "black", 
+        fontface = "bold",
+        box.padding = 0.35, 
+        point.padding = 0.5, 
+        label.r = 0.2, 
+        label.size = 0.25, 
+        size = 3,
+        segment.colour = "#4c4b5e",
+        segment.size = 0.5,
+        min.segment.length = 0,
+        max.overlaps = 100,
+        seed = 42
       ) +
       xlim(-5, 5) +
-      ylim(0, min(30, max(res_df$log10p, na.rm = TRUE) * 1.1)) +
+      ylim(0, min(35, max(res_df$log10p, na.rm = TRUE) * 1.1)) +
       labs(
         title = plot_title,
         x = expression(Log[2]~Fold~Change),
@@ -473,6 +494,9 @@ BXD.Stacked.plot <- function(df1, df2, meta, classification, dfType1, dfType2) {
   topN_common <- 25
   topN_unique <- 20
   group <- "Diet"
+  
+  rep_samples <- grep("(_r|_n)$", colnames(df1), value = TRUE)
+  df1 <- df1[, setdiff(colnames(df1), rep_samples), drop = FALSE]
   
   df1_sum <- df1[(order(-rowSums(df1[,2:ncol(df1)]))),] 
   df2_sum <- df2[(order(-rowSums(df2[,2:ncol(df2)]))),] 
