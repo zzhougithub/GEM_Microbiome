@@ -1,0 +1,159 @@
+
+###### Tech Reps / Bio Reps / Overall Var Calculations for Fig 1D - variance in MG data for the same genera used in Panel 2D
+library(vioplot)
+
+
+VarExplained_RandomReps=c(73.5,67.6,59.1,89.9,65.1,79.9,69.9,25.2,74.5,79.4,85,37.5,38.6,24.5,70.1,23,62.9,84.8,38.6,46.5,63.6,44.1,19.1,60.6,72.6,75.6,69,73.2,55.7,69.6,71.9,51.5,37.4)
+VarExplained_BioReps=c(25.3,26.9,39.7,8.3,29.6,19.7,29.2,17.1,18.1,15.5,12.1,48,61.1,35.7,24.1,18.1,36.1,15.2,56.1,32.6,29,44.2,26,35.8,26.2,24.4,30.5,26.5,34,29.1,27,44.7,58.2)
+VarExplained_ExperimentReps=c(0.2,3.3,0.6,0.6,3.8,0.3,0.5,57.6,7.3,5,2.6,14.5,0.2,1,5.7,59,0.4,0,4.6,20.5,7.5,0.3,54.9,1.9,0.7,0,0.3,0.2,10.3,1.1,1.1,0.7,4.4)
+VarExplained_TechReps=c(1,2.2,0.5,1.2,1.4,0.2,0.4,0.1,0.1,0.1,0.3,0,0.1,38.7,0.1,0,0.6,0,0.7,0.4,0,11.4,0,1.6,0.5,0,0.2,0.1,0,0.1,0,3.2,0)
+
+vioplot(VarExplained_RandomReps, VarExplained_BioReps, VarExplained_ExperimentReps, VarExplained_TechReps)
+
+Groups=c("Random","Random","Random","Random","Random","Random","Random","Random","Random","Random","Random","Random","Random","Random","Random","Random","Random","Random","Random","Random","Random","Random","Random","Random","Random","Random","Random","Random","Random","Random","Random","Random","Random","Bio","Bio","Bio","Bio","Bio","Bio","Bio","Bio","Bio","Bio","Bio","Bio","Bio","Bio","Bio","Bio","Bio","Bio","Bio","Bio","Bio","Bio","Bio","Bio","Bio","Bio","Bio","Bio","Bio","Bio","Bio","Bio","Bio","Exp","Exp","Exp","Exp","Exp","Exp","Exp","Exp","Exp","Exp","Exp","Exp","Exp","Exp","Exp","Exp","Exp","Exp","Exp","Exp","Exp","Exp","Exp","Exp","Exp","Exp","Exp","Exp","Exp","Exp","Exp","Exp","Exp","Tech","Tech","Tech","Tech","Tech","Tech","Tech","Tech","Tech","Tech","Tech","Tech","Tech","Tech","Tech","Tech","Tech","Tech","Tech","Tech","Tech","Tech","Tech","Tech","Tech","Tech","Tech","Tech","Tech","Tech","Tech","Tech","Tech")
+AllData=c(73.5,67.6,59.1,89.9,65.1,79.9,69.9,25.2,74.5,79.4,85,37.5,38.6,24.5,70.1,23,62.9,84.8,38.6,46.5,63.6,44.1,19.1,60.6,72.6,75.6,69,73.2,55.7,69.6,71.9,51.5,37.4,25.3,26.9,39.7,8.3,29.6,19.7,29.2,17.1,18.1,15.5,12.1,48,61.1,35.7,24.1,18.1,36.1,15.2,56.1,32.6,29,44.2,26,35.8,26.2,24.4,30.5,26.5,34,29.1,27,44.7,58.2,0.2,3.3,0.6,0.6,3.8,0.3,0.5,57.6,7.3,5,2.6,14.5,0.2,1,5.7,59,0.4,0,4.6,20.5,7.5,0.3,54.9,1.9,0.7,0,0.3,0.2,10.3,1.1,1.1,0.7,4.4,1,2.2,0.5,1.2,1.4,0.2,0.4,0.1,0.1,0.1,0.3,0,0.1,38.7,0.1,0,0.6,0,0.7,0.4,0,11.4,0,1.6,0.5,0,0.2,0.1,0,0.1,0,3.2,0)
+
+
+
+
+
+
+#### FIGURE 2A, 2B, 2C - Calculating Variance Explained For Shannon Diversity and F/B Ratios
+library(gplots)
+library(outliers)
+library(readxl)
+
+### SET THIS PATH TO YOUR OWN DOWNLOADS FOLDER WHICH INCLUDES THE CODE AND SUPPLEMENTAL TABLES!
+setwd("~/Dropbox/Evan/1.\ My\ Papers/51B.\ BXD\ Cecum\ Paper\ With\ Ziyun/B_FINAL_REVISION_TO_MICROBIOME/Supplemental_Tables/")
+
+metaDNA=read_excel("S1_metadata_cecalsamples.xlsx", sheet=2)
+
+
+#### 
+metaDNA$MG_Shannon
+
+shannon_CD <- metaDNA[metaDNA$Diet == "CD", ]
+shannon_HF <- metaDNA[metaDNA$Diet == "HF", ]
+
+shannon_CD_AG1 <- shannon_CD[shannon_CD$Age_group == "AG1", ]
+shannon_CD_AG2 <- shannon_CD[shannon_CD$Age_group == "AG2", ]
+shannon_CD_AG3 <- shannon_CD[shannon_CD$Age_group == "AG3", ]
+shannon_CD_AG4 <- shannon_CD[shannon_CD$Age_group == "AG4", ]
+
+shannon_HF_AG1 <- shannon_HF[shannon_HF$Age_group == "AG1", ]
+shannon_HF_AG2 <- shannon_HF[shannon_HF$Age_group == "AG2", ]
+shannon_HF_AG3 <- shannon_HF[shannon_HF$Age_group == "AG3", ]
+shannon_HF_AG4 <- shannon_HF[shannon_HF$Age_group == "AG4", ]
+
+plot(rm.outlier(shannon_CD$Age, fill=F), rm.outlier(shannon_CD$MG_Shannon, fill=F), pch=19, col="blue", ylim=c(2.5,5), xlim=c(150,850))
+par(new=TRUE)
+plot(rm.outlier(shannon_HF$Age, fill=F), rm.outlier(shannon_HF$MG_Shannon, fill=F), pch=19, col="yellow", ylim=c(2.5,5), xlim=c(150,850))
+
+# Checking the dietary differences at each timepoint (p value and FC)
+t.test(rm.outlier(shannon_CD_AG1$MG_Shannon, fill=F), rm.outlier(shannon_HF_AG1$MG_Shannon, fill=F))$p.value
+mean(rm.outlier(shannon_CD_AG1$MG_Shannon, fill=F), na.rm=T)/mean(rm.outlier(shannon_HF_AG1$MG_Shannon, fill=F), na.rm=T)
+
+t.test(rm.outlier(shannon_CD_AG2$MG_Shannon, fill=F), rm.outlier(shannon_HF_AG2$MG_Shannon, fill=F))$p.value
+mean(rm.outlier(shannon_CD_AG2$MG_Shannon, fill=F), na.rm=T)/mean(rm.outlier(shannon_HF_AG2$MG_Shannon, fill=F), na.rm=T)
+
+t.test(rm.outlier(shannon_CD_AG3$MG_Shannon, fill=F), rm.outlier(shannon_HF_AG3$MG_Shannon, fill=F))$p.value
+mean(rm.outlier(shannon_CD_AG3$MG_Shannon, fill=F), na.rm=T)/mean(rm.outlier(shannon_HF_AG3$MG_Shannon, fill=F), na.rm=T)
+
+t.test(rm.outlier(shannon_CD_AG4$MG_Shannon, fill=F), rm.outlier(shannon_HF_AG4$MG_Shannon, fill=F))$p.value
+mean(rm.outlier(shannon_CD_AG4$MG_Shannon, fill=F), na.rm=T)/mean(rm.outlier(shannon_HF_AG4$MG_Shannon, fill=F), na.rm=T)
+
+
+t.test(rm.outlier(shannon_CD$MG_Shannon, fill=F), rm.outlier(shannon_HF$MG_Shannon, fill=F))$p.value
+
+
+################################# VARIANCE EXPLAINED FOR SHANNON DIVERSITY in MG DATA
+
+Diet=c("CD","CD","CD","CD","CD","CD","CD","CD","CD","CD","CD","CD","CD","CD","CD","CD","CD","CD","CD","CD","CD","CD","CD","CD","CD","CD","CD","CD","CD","CD","CD","CD","CD","CD","CD","CD","CD","CD","CD","CD","CD","CD","CD","CD","CD","CD","CD","CD","CD","CD","CD","CD","CD","CD","CD","CD","CD","CD","CD","CD","CD","CD","CD","CD","CD","CD","CD","CD","CD","CD","CD","CD","CD","CD","CD","CD","CD","CD","CD","CD","CD","CD","CD","CD","CD","CD","CD","CD","CD","CD","CD","CD","CD","CD","CD","CD","CD","CD","CD","CD","CD","CD","CD","CD","CD","CD","CD","CD","CD","CD","CD","CD","CD","CD","CD","CD","CD","CD","CD","CD","HF","HF","HF","HF","HF","HF","HF","HF","HF","HF","HF","HF","HF","HF","HF","HF","HF","HF","HF","HF","HF","HF","HF","HF","HF","HF","HF","HF","HF","HF","HF","HF","HF","HF","HF","HF","HF","HF","HF","HF","HF","HF","HF","HF","HF","HF","HF","HF","HF","HF","HF","HF","HF","HF","HF","HF","HF","HF","HF","HF","HF","HF","HF","HF","HF","HF","HF","HF","HF","HF","HF","HF","HF","HF","HF","HF","HF","HF","HF","HF","HF","HF","HF","HF","HF","HF","HF","HF","HF","HF")
+Strain=c("BXD100","BXD100","BXD100","BXD100","BXD100","BXD101","BXD101","BXD102","BXD102","BXD102","BXD102","BXD13","BXD24","BXD29","BXD29","BXD29","BXD29","BXD32","BXD32","BXD32","BXD32","BXD32","BXD32","BXD34","BXD34","BXD34","BXD34","BXD34","BXD34","BXD34","BXD34","BXD34","BXD39","BXD40","BXD40","BXD48","BXD48","BXD48","BXD48","BXD48","BXD48a","BXD49","BXD51","BXD51","BXD53","BXD53","BXD53","BXD53","BXD60","BXD60","BXD61","BXD61","BXD61","BXD62","BXD62","BXD63","BXD63","BXD63","BXD64","BXD65","BXD65","BXD65","BXD65","BXD65","BXD65","BXD65","BXD65","BXD65","BXD65b","BXD65b","BXD65b","BXD65b","BXD66","BXD67","BXD67","BXD68","BXD68","BXD69","BXD69","BXD69","BXD69","BXD69","BXD70","BXD70","BXD73","BXD73","BXD73","BXD73","BXD73","BXD73b","BXD73b","BXD73b","BXD73b","BXD77","BXD77","BXD77","BXD79","BXD79","BXD84","BXD87","BXD87","BXD87","BXD88","BXD89","BXD89","BXD9","BXD90","BXD90","BXD95","BXD95","C57BL6J","C57BL6J","C57BL6J","C57BL6J","D2B6F1","D2B6F1","D2B6F1","DBA2J","DBA2J","DBA2J","B6D2F1","B6D2F1","B6D2F1","BXD100","BXD100","BXD102","BXD102","BXD29","BXD29","BXD29","BXD29","BXD29","BXD32","BXD32","BXD32","BXD32","BXD34","BXD34","BXD40","BXD40","BXD48","BXD48","BXD48","BXD48a","BXD48a","BXD48a","BXD49","BXD51","BXD51","BXD51","BXD51","BXD61","BXD61","BXD62","BXD62","BXD63","BXD64","BXD65","BXD65","BXD65","BXD65","BXD65","BXD65b","BXD65b","BXD66","BXD67","BXD68","BXD69","BXD69","BXD70","BXD70","BXD70","BXD70","BXD70","BXD73","BXD73","BXD73","BXD73","BXD73b","BXD73b","BXD77","BXD77","BXD77","BXD79","BXD87","BXD87","BXD89","BXD89","BXD9","BXD9","BXD90","BXD90","BXD90","BXD90","BXD95","BXD99","C57BL6J","C57BL6J","C57BL6J","C57BL6J","C57BL6J","C57BL6J","C57BL6J","C57BL6J","C57BL6J","C57BL6J","D2B6F1","D2B6F1","DBA2J","DBA2J")
+ShannonDiv=c(3.35073693,4.075975772,4.182303993,4.283061876,4.304561476,4.204248312,4.644788452,4.321139167,4.509708344,4.75099497,4.797827863,4.331304915,4.426214721,4.409569608,4.425069921,4.600178709,4.605526813,4.43026171,4.470284863,4.492416073,4.537610719,4.642430058,4.751006262,3.858161104,3.974308235,4.157567134,4.185737869,4.250947594,4.328413021,4.371808543,4.487830765,4.592555468,4.284855825,4.237817183,4.367837057,4.106845499,4.113899483,4.378212068,4.506491918,4.552320228,4.49241995,4.012804474,4.116925834,4.40771168,4.273421557,4.283220539,4.291753266,4.293206639,4.808669829,4.831637042,3.916646576,4.478828494,4.540901977,4.4413749,4.509122488,4.519483884,4.561948084,4.65102468,4.225756132,4.284640965,4.337635014,4.398904432,4.400728907,4.408750728,4.477387528,4.533781855,4.587501893,4.651760245,4.271295999,4.612030468,4.650413684,4.74005522,4.356095897,4.36770078,4.402691565,4.007438422,4.24395816,4.25173742,4.368509129,4.36871072,4.555073306,4.575713445,4.261800874,4.59016683,3.543704147,4.126966711,4.144431225,4.297488126,4.54150311,4.229970436,4.361970238,4.414142773,4.519937956,4.204784006,4.338492501,4.389367199,4.228612883,4.651108493,4.323237497,4.395830525,4.49971041,4.751094332,4.086539729,4.367692808,4.396562385,4.64196795,4.022557301,4.302413428,4.032967722,4.400074086,3.851838865,3.856924852,4.378715967,4.404786339,4.179089692,4.422872597,4.430832704,4.270542908,4.320037125,4.493726503,3.5043264,3.730289566,3.93688586,3.266099517,3.517681733,3.717487708,3.836088095,3.475264267,3.62637686,3.693782807,3.81359895,4.003174984,3.48283115,3.794149031,3.829061155,3.833250504,2.94856751,3.781677055,3.614227011,3.961516299,3.415013955,3.650767417,3.740950693,3.964665724,3.975439763,4.160337942,3.548587032,2.954874417,3.641369133,3.759170901,3.851234137,3.206305674,3.501585255,3.712566193,4.02978987,3.448385515,3.518252846,3.592927523,3.695106376,3.792148631,3.837752907,3.853403632,3.402895576,3.59805461,3.472565724,3.230580082,3.462396096,3.916498103,3.925794586,1.530196626,3.307895941,3.368285879,3.468277912,3.731500498,3.449233776,3.769618466,3.99235705,4.644135422,3.722770304,3.917004581,3.234070392,3.441844533,3.451867435,3.411787887,3.658804735,3.76714782,3.716872732,3.853211701,2.60034042,3.984321085,3.377861578,3.470114719,3.569157287,3.772482241,3.574822193,3.572744936,2.282519858,2.368166502,3.466172929,3.50646839,3.551240082,3.589526464,3.629278608,3.786030695,3.817367307,3.869667378,3.701782867,3.800788862,3.404517428,3.4430294)
+AgeGroup=c("AG3","AG3","AG4","AG4","AG2","AG4","AG1","AG2","AG1","AG4","AG4","AG2","AG4","AG1","AG3","AG3","AG2","AG4","AG1","AG3","AG1","AG2","AG2","AG4","AG2","AG1","AG3","AG3","AG3","AG1","AG2","AG1","AG4","AG3","AG2","AG1","AG1","AG3","AG2","AG4","AG1","AG1","AG2","AG4","AG4","AG4","AG3","AG4","AG4","AG4","AG1","AG3","AG2","AG2","AG2","AG3","AG4","AG1","AG3","AG3","AG1","AG2","AG3","AG4","AG1","AG3","AG1","AG1","AG1","AG4","AG4","AG4","AG1","AG4","AG4","AG1","AG2","AG3","AG4","AG1","AG4","AG4","AG2","AG1","AG1","AG2","AG2","AG2","AG3","AG1","AG2","AG3","AG4","AG3","AG4","AG2","AG3","AG1","AG1","AG1","AG3","AG2","AG4","AG1","AG2","AG2","AG4","AG3","AG3","AG2","AG1","AG2","AG4","AG4","AG1","AG4","AG4","AG1","AG1","AG4","AG3","AG1","AG4","AG3","AG2","AG3","AG1","AG3","AG3","AG1","AG2","AG4","AG1","AG3","AG2","AG2","AG3","AG2","AG2","AG1","AG3","AG1","AG3","AG1","AG2","AG3","AG1","AG1","AG2","AG4","AG4","AG2","AG3","AG3","AG2","AG1","AG2","AG1","AG1","AG3","AG3","AG1","AG1","AG2","AG1","AG4","AG1","AG1","AG3","AG4","AG1","AG4","AG3","AG2","AG2","AG2","AG4","AG1","AG1","AG3","AG4","AG2","AG4","AG3","AG3","AG1","AG1","AG4","AG3","AG2","AG4","AG1","AG3","AG2","AG1","AG1","AG1","AG1","AG4","AG3","AG1","AG4","AG1","AG2","AG4","AG4","AG1","AG1","AG4","AG4")
+
+AllData=cbind(ShannonDiv, Strain, Diet, AgeGroup)
+AllData <- as.data.frame(AllData)
+
+AllData$Strain <- factor(AllData$Strain)
+AllData$Diet  <- factor(AllData$Diet)
+AllData$AgeGroup  <- factor(AllData$AgeGroup)
+AllData$ShannonDiv  <- as.numeric(AllData$ShannonDiv)
+
+# Two-way ANOVA
+model <- aov(AllData$ShannonDiv ~ Strain * Diet, data = AllData)
+
+
+# Summary of ANOVA table
+summary(model)
+
+model <- aov(AllData ~ Groups)
+summary(model)
+TukeyHSD(model)
+
+Straineff=summary(model)[[1]]$"Sum Sq"[1]
+Dieteff=summary(model)[[1]]$"Sum Sq"[2]
+Interact=summary(model)[[1]]$"Sum Sq"[3]
+Residual=summary(model)[[1]]$"Sum Sq"[4]
+
+Straineff/sum(Straineff+Dieteff+Interact+Residual)*100
+
+# Three-way ANOVA
+model3 <- aov(AllData$ShannonDiv ~ Strain * Diet * AgeGroup, data = AllData)
+
+# Summary of ANOVA table
+summary(model3)
+
+#model3 <- aov(AllData ~ Groups)
+#summary(model3)
+#TukeyHSD(model3)
+
+Straineff=summary(model3)[[1]]$"Sum Sq"[1]
+Dieteff=summary(model3)[[1]]$"Sum Sq"[2]
+Ageeff=summary(model3)[[1]]$"Sum Sq"[3]
+Interact=summary(model3)[[1]]$"Sum Sq"[4]+summary(model3)[[1]]$"Sum Sq"[5]+summary(model3)[[1]]$"Sum Sq"[6]+summary(model3)[[1]]$"Sum Sq"[7]
+Residual=summary(model3)[[1]]$"Sum Sq"[8]
+
+
+Ageeff/sum(Straineff+Dieteff+Ageeff+Interact+Residual)*100
+
+
+
+
+################################# VARIANCE EXPLAINED FOR FB RATIO in MG DATA (Fig 2B)
+
+
+Strain=c("BXD73","BXD70","BXD100","C57BL/6J","C57BL/6J","BXD53","BXD53","DBA/2J","C57BL/6J","BXD51","BXD53","BXD53","C57BL/6J","BXD90","BXD65","BXD70","BXD48","BXD79","BXD65b","BXD65","C57BL/6J","BXD70","BXD68","BXD66","BXD34","BXD62","BXD68","BXD62","BXD88","BXD89","BXD24","BXD90","BXD65b","BXD100","BXD65b","BXD65","BXD48","BXD40","BXD69","BXD101","BXD90","BXD77","BXD70","BXD32","BXD73b","BXD40","BXD73","BXD32","BXD89","C57BL/6J","BXD61","BXD34","BXD84","BXD73b","BXD90","BXD48","BXD77","BXD29","BXD32","BXD69","BXD62","BXD48","BXD77","C57BL/6J","D2B6F1","BXD34","BXD32","BXD102","BXD61","C57BL/6J","BXD87","BXD32","BXD102","DBA/2J","BXD34","BXD65","BXD48","BXD100","BXD77","BXD67","C57BL/6J","BXD48a","C57BL/6J","BXD70","BXD69","BXD73","BXD79","BXD34","BXD89","BXD61","BXD29","BXD67","BXD87","BXD95","BXD68","BXD65","BXD65","D2B6F1","BXD48a","BXD65","BXD65b","BXD32","B6D2F1","BXD65","BXD67","D2B6F1","BXD61","BXD77","BXD48","BXD51","BXD73","BXD32","BXD90","BXD29","BXD73b","BXD29","BXD65","C57BL/6J","BXD32","BXD73b","C57BL/6J","BXD13","BXD9","BXD34","BXD73","BXD65","BXD73","BXD102","BXD9","BXD73b","BXD29","BXD100","BXD65","BXD70","BXD51","BXD60","BXD100","BXD51","BXD95","BXD63","BXD89","BXD63","BXD95","BXD60","BXD65b","BXD65","BXD62","BXD29","D2B6F1","BXD48a","BXD77","BXD65","BXD73","BXD48a","C57BL/6J","BXD73","BXD100","BXD48","BXD34","BXD66","D2B6F1","BXD51","BXD34","BXD32","BXD69","BXD61","BXD79","BXD87","BXD34","BXD63","B6D2F1","DBA/2J","BXD102","BXD69","BXD102","DBA/2J","BXD32","BXD39","DBA/2J","BXD69","B6D2F1","BXD29","BXD40","BXD65","BXD73","BXD100","BXD34","BXD29","BXD90","BXD63","BXD65b","BXD101","BXD48","BXD73b","BXD70","BXD64","BXD102","BXD34","BXD29","BXD49","BXD49","BXD64","BXD87","BXD99","BXD87","C57BL/6J","BXD40")
+AgeGroup=c("AG1","AG4","AG3","AG2","AG1","AG4","AG4","AG4","AG1","AG2","AG3","AG4","AG4","AG4","AG4","AG2","AG3","AG3","AG1","AG3","AG1","AG4","AG1","AG1","AG3","AG3","AG1","AG2","AG4","AG1","AG4","AG3","AG4","AG3","AG2","AG1","AG4","AG3","AG1","AG1","AG4","AG3","AG3","AG2","AG3","AG2","AG2","AG1","AG1","AG3","AG1","AG2","AG1","AG1","AG3","AG1","AG2","AG1","AG3","AG3","AG2","AG2","AG4","AG4","AG1","AG1","AG2","AG1","AG3","AG4","AG3","AG2","AG2","AG4","AG2","AG2","AG1","AG3","AG4","AG4","AG4","AG1","AG4","AG1","AG1","AG2","AG1","AG1","AG2","AG2","AG3","AG4","AG1","AG2","AG2","AG1","AG1","AG4","AG1","AG3","AG4","AG1","AG1","AG1","AG4","AG4","AG3","AG4","AG3","AG4","AG4","AG1","AG1","AG3","AG2","AG3","AG3","AG1","AG4","AG1","AG2","AG2","AG3","AG1","AG3","AG1","AG2","AG1","AG2","AG3","AG2","AG2","AG1","AG1","AG4","AG4","AG2","AG4","AG1","AG1","AG4","AG3","AG3","AG4","AG4","AG3","AG2","AG3","AG1","AG3","AG2","AG1","AG1","AG2","AG1","AG2","AG4","AG3","AG3","AG1","AG1","AG2","AG2","AG2","AG3","AG2","AG3","AG2","AG4","AG4","AG4","AG1","AG4","AG4","AG4","AG4","AG3","AG4","AG1","AG4","AG3","AG4","AG1","AG3","AG2","AG4","AG3","AG2","AG2","AG1","AG1","AG4","AG1","AG4","AG2","AG2","AG3","AG3","AG1","AG1","AG1","AG3","AG1","AG1","AG3","AG4","AG2")
+Diet=c("CD","HF","CD","CD","HF","CD","CD","HF","HF","CD","CD","CD","HF","HF","CD","CD","HF","CD","CD","CD","CD","HF","CD","CD","CD","HF","HF","CD","CD","CD","CD","CD","CD","CD","HF","CD","CD","CD","HF","CD","CD","CD","HF","HF","CD","CD","CD","CD","HF","HF","CD","CD","CD","CD","HF","CD","CD","CD","CD","CD","CD","CD","HF","CD","CD","CD","CD","HF","CD","CD","CD","CD","CD","HF","CD","CD","CD","HF","HF","CD","HF","HF","HF","HF","CD","CD","CD","CD","CD","HF","CD","HF","CD","CD","CD","CD","CD","CD","CD","CD","CD","CD","HF","CD","CD","CD","HF","CD","CD","HF","HF","HF","HF","CD","CD","HF","CD","HF","CD","HF","HF","CD","HF","CD","CD","HF","CD","CD","CD","HF","CD","HF","HF","CD","CD","CD","CD","HF","HF","CD","HF","CD","CD","CD","CD","HF","HF","HF","HF","HF","HF","HF","HF","HF","HF","HF","CD","HF","HF","HF","HF","HF","HF","HF","HF","CD","HF","CD","CD","CD","HF","CD","CD","CD","CD","CD","HF","CD","CD","CD","HF","HF","HF","HF","HF","CD","CD","HF","HF","HF","HF","CD","HF","CD","HF","HF","HF","CD","HF","HF","CD","CD","HF","HF","HF","HF","HF")
+FBRatio=c(0.297791149,0.336077873,0.539548779,0.555182672,0.60444868,0.621723256,0.645305611,0.660144306,0.66026658,0.688870326,0.704693649,0.714635624,0.743256629,0.745933839,0.755045132,0.81099047,0.823603913,0.834379866,0.844090229,0.854240001,0.865124305,0.870636853,0.877178653,0.887532047,0.914236907,0.919259663,0.962840517,0.986107316,1.00219457,1.005890983,1.012876305,1.052654758,1.057060169,1.065888339,1.102614265,1.104573503,1.111735783,1.143269645,1.158321362,1.172454696,1.187786618,1.232075986,1.233347712,1.281303515,1.290644761,1.29349219,1.294348694,1.325794419,1.340063097,1.348176429,1.374943133,1.377089129,1.381174202,1.381306569,1.38577439,1.400190383,1.406621617,1.409412645,1.412609451,1.451292042,1.458201723,1.482059254,1.492375129,1.498345637,1.507176387,1.517320992,1.522276198,1.522841912,1.526344046,1.527746845,1.536686547,1.538982214,1.539515948,1.546389692,1.546781589,1.552000759,1.552982624,1.553092846,1.558131438,1.563566034,1.566929569,1.590649026,1.591580136,1.621635549,1.626286081,1.632671552,1.633430995,1.642251535,1.643572686,1.648314982,1.652455983,1.654538529,1.664943934,1.685491681,1.692326177,1.69302136,1.703032658,1.7195044,1.744054312,1.753564726,1.759998931,1.780159004,1.786779408,1.789760334,1.797697703,1.83457937,1.835277323,1.839209166,1.852913022,1.868754186,1.878430746,1.904158424,1.92116541,1.927591338,1.953520259,1.954493825,1.962844805,1.968931262,1.988129429,2.001839279,2.024162252,2.044556233,2.054497366,2.065373447,2.070787744,2.080078445,2.082096239,2.108558711,2.109698101,2.121036932,2.155090027,2.169439859,2.251039243,2.274630187,2.287423419,2.299172957,2.314325371,2.319965166,2.323988037,2.358431948,2.376430971,2.431463645,2.432138624,2.434456041,2.438167562,2.505382521,2.5459846,2.584995402,2.607531977,2.617267962,2.655379421,2.67189761,2.710839112,2.741938919,2.770626698,2.852308985,2.875942749,2.879295956,2.983514043,3.011543268,3.03368404,3.119027084,3.145981052,3.149157793,3.158226278,3.181742285,3.186843794,3.20491621,3.226881296,3.324495816,3.328496314,3.337038652,3.3419528,3.383546775,3.420451265,3.427942476,3.451660768,3.455354525,3.469363651,3.507471354,3.693987193,3.705300064,3.709563154,3.721032367,3.797744105,3.818184822,3.869298067,3.928351325,3.942082887,3.967660455,4.087366386,4.461372185,4.470607305,4.519753088,4.520370399,4.618504047,4.72755839,5.214376815,5.252343655,5.316893881,5.498243536,5.543125948,5.68034655,6.680987551,7.121531929,7.969527829,8.956510409)
+
+AllData=cbind(FBRatio, Strain, Diet, AgeGroup)
+AllData <- as.data.frame(AllData)
+
+AllData$Strain <- factor(AllData$Strain)
+AllData$Diet  <- factor(AllData$Diet)
+AllData$AgeGroup  <- factor(AllData$AgeGroup)
+AllData$FBRatio  <- as.numeric(AllData$FBRatio)
+
+# Two-way ANOVA
+model3 <- aov(AllData$FBRatio ~ Strain * Diet * AgeGroup, data = AllData)
+summary(model3)
+
+Straineff=summary(model3)[[1]]$"Sum Sq"[1]
+Dieteff=summary(model3)[[1]]$"Sum Sq"[2]
+Ageeff=summary(model3)[[1]]$"Sum Sq"[3]
+Interact=summary(model3)[[1]]$"Sum Sq"[4]+summary(model3)[[1]]$"Sum Sq"[5]+summary(model3)[[1]]$"Sum Sq"[6]+summary(model3)[[1]]$"Sum Sq"[7]
+Residual=summary(model3)[[1]]$"Sum Sq"[8]
+
+
+Ageeff/sum(Straineff+Dieteff+Ageeff+Interact+Residual)*100
+
+
+
+
+
+
+
+
