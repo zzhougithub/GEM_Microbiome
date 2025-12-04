@@ -1,4 +1,5 @@
-############# HPC
+############# HPC ####################################### 
+######################################################### 
 # KneadData v0.10.0
 srun singularity run $SINGULARITY_FOLDER/kneaddata.sif kneaddata \
     --threads 128 \
@@ -41,3 +42,11 @@ merge_metaphlan_tables.py *_1_kneaddata.txt > 0_metaDNA_metaphlan4_abundance_all
 humann_join_tables --input /scratch/users/zzhou/humann --output metaDNA_humann3.8_pathabundance_relab.tsv --file_name pathabundance_relab
 humann_join_tables --input /scratch/users/zzhou/humann --output metaDNA_humann3.8_pathabundance_cpm.tsv --file_name pathabundance_cpm
 humann_join_tables --input /scratch/users/zzhou/humann --output metaDNA_humann3.8_pathcoverage.tsv --file_name pathcoverage
+
+
+
+############### Fig3 B 
+### https://github.com/biobakery/humann
+humann_barplot --input S6_metaDNA_humann3.8_pathabundance_relab_zy.txt --focal-metadata Diet --last-metadata Diet --sort sum metadata --scaling original --focal-feature PWY-6385 --output plotpathway_6385.pdf --as-genera
+
+

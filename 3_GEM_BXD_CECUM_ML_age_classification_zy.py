@@ -327,7 +327,7 @@ class AgeClassificationPipeline:
 
 
 if __name__ == '__main__':
-    DATA_DIR = "/Users/zzhou/Documents/LCSB/Work/MetaDNA_ML"
+    DATA_DIR = "/Users/zzhou/Documents/LCSB/Work/Cecum_ML"
     OUTPUT_DIR = "./results/age_classification"
 
     pipeline = AgeClassificationPipeline(DATA_DIR, OUTPUT_DIR, random_state=0)

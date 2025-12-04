@@ -210,8 +210,6 @@ BXD.DEG.plot <- function(df, meta, label_n, group = c("Diet", "Age")) {
                  alpha = ifelse(res_df$group == "NS", 0.2, 0.7), 
                  size = ifelse(res_df$group == "NS", 1.3, 2), stroke = 0.4) +
       scale_fill_manual(values = c("Down" = "#56B4E9", "NS" = "grey80", "Up" = "#E2BE35")) +
-      #scale_fill_manual(values = c("Down" = "#b2e2e2", "NS" = "grey80", "Up" = "#238b45")) +
-      #scale_fill_manual(values = c("Down" = "#fdbe85", "NS" = "grey80", "Up" = "#d94701")) +
       geom_vline(xintercept = c(-1, 1), linetype = "dashed", color = "black", linewidth = 0.4) +
       geom_hline(yintercept = -log10(0.05), linetype = "dotted", color = "black", linewidth = 0.4) +
       ggrepel::geom_label_repel(
@@ -346,7 +344,7 @@ BXD.Ratio.plot <- function(df, meta, tax1, tax2) {
   
   T1T2R_long <- 
     pivot_longer(T1T2R, 
-                 cols = -contains("taxonomy"), # columns argument, required
+                 cols = -contains("taxonomy"), 
                  names_to = "sample",
                  values_to = "abundance")
   

@@ -27,13 +27,17 @@ library(DOSE)
 library(glue)
 library(scales)
 library(GseaVis)
+library(readxl)
+library(maaslin3)
+library(knitr)
 
 source("GEM_BXD_CECUM_functions_zy.R")
 
 
 
 ############### load data 
-metadata <- read.table("S1.2_metadata_summary_zy.txt", header=T, row.names= 1, sep="\t") 
+metadata <- read_excel("S1_metadata_cecalsamples.xlsx", sheet = 2, na = character()) %>%
+  column_to_rownames(var = names(.)[1])
 mRNAraw <- read.table("S2_mRNA_cecum_raw_counts_zy.txt", header=T, sep="\t") 
 mRNAlog2 <- read.table("S3_mRNA_cecum_TPMLog2_zy.txt", header=T, sep="\t") 
 MGabun <- read.table("S4_metaDNA_metaphlan4_abundance_zy.txt", header=T, na.strings="", sep="\t", stringsAsFactors=FALSE)
@@ -60,17 +64,6 @@ BXD.Anova.plot(MT_pre, metadata)
 degDiet <- BXD.DEG.plot(mRNAraw, metadata, label_n = 20, group = "Diet")
 degAge <- BXD.DEG.plot(mRNAraw, metadata, label_n = 20, group = "Age")
 
-#degDiet$signif_rank <- ifelse(degDiet$group == "NS", 1, 0)
-#degDiet_sorted <- degDiet[order(degDiet$signif_rank, 
-#                                -degDiet$log10p,
-#                                decreasing = FALSE), ]
-#degDiet_sorted$signif_rank <- NULL
-#write.table(degDiet_sorted,
-#            file = "degDiet_sorted.txt",
-#            sep = "\t",
-#            quote = FALSE,
-#            col.names = NA)
-
 
 ############### Fig1 H  ; FigS2 A
 BXD.ORA.plot(degAgeHF, 15)
@@ -92,15 +85,33 @@ MTpath_pre <- BXD.Data.Pre(df = MTpath, datatype = "pathabun")
 BXD.Stacked.plot(MGpath_pre, MTpath_pre, metadata, "Pathway", "MG_", "MT_")
 
 
-############### Fig1 E-G 
+############### Fig2 E
 ### https://github.com/biobakery/maaslin3
+metadata$Diet <- factor(metadata$Diet, levels = c("CD", "HF"))
 
+age_idx <- rownames(metadata)[metadata$Age < 1000]
+age_idx <- intersect(age_idx, colnames(MG_pre))
+feature_table <- MG_pre[, age_idx]
 
-############### Fig3 B 
-### https://github.com/biobakery/humann
+output_dir <- "/your/output/folder"
 
-
-
-
-
-
+set.seed(1)
+fit_out <- maaslin3(input_data = feature_table,
+                    input_metadata = metadata,
+                    output = output_dir,
+                    min_abundance = 0.0001,
+                    min_prevalence = 0.1,
+                    formula = '~Diet + (1|Age) + (1|Body_weight) + (1|Strain) + (1|Sex)',
+                    reference = c("Diet,CD"),
+                    normalization = 'TSS',
+                    transform = 'LOG',
+                    augment = TRUE,
+                    standardize = TRUE,
+                    max_significance = 0.25,
+                    correction = "BH",
+                    median_comparison_abundance = TRUE,
+                    median_comparison_prevalence = FALSE,
+                    coef_plot_vars = c('Diet HF'), 
+                    heatmap_vars = c('Diet HF'), 
+                    max_pngs = 250,
+                    cores = 4)
