@@ -1,0 +1,1044 @@
+---
+title: "Coda_regression"
+author: "Arianna"
+date: "2025-12-03"
+output: html_document
+---
+
+```{r}
+### Library
+library(dplyr)
+library(tidyr)
+library(readr)
+library(coda4microbiome)
+library(readxl)
+library(textshape)
+library(ggplot2)
+library(UpSetR)
+library(ComplexHeatmap)
+library(circlize)
+library(tibble)
+library(pROC) 
+````
+
+```{r}
+## Download the data 
+data <- read_tsv("/Users/arianna.lamanna/Downloads/S4_metaDNA_metaphlan4_abundance_zy.txt")
+
+##shapirotest
+shapiro.test(rnorm(data))
+
+## Keep only the bacteria at genus level 
+colnames(data)[1] <- "clade"
+rownames(data) <- NULL
+data <- data %>% column_to_rownames("clade")
+
+row_names <- rownames(data)
+row_names <- as.data.frame(row_names)
+
+row_names <- row_names %>%
+ separate("row_names", into = c("Kingdom", "Phylum", "Class", "Order", "Familly", "Genus", "Species","Strains"), sep = "\\|")
+
+rownames(row_names) = rownames(data)
+
+row_names <- row_names %>%
+  filter(!is.na(Species))
+
+ row_names <- row_names %>%
+  filter(is.na(Strains))
+
+## For genus level
+ 
+ # row_names <- row_names %>%
+ #  filter(!is.na(Genus))
+ # 
+ # row_names <- row_names %>%
+ #  filter(is.na(Species))
+ 
+
+row_names <- as.data.frame(row_names[,-7])
+
+data_final <- data[rownames(row_names), ]
+clade <- rownames(data_final)
+data_final <- cbind(clade, data_final)
+data_final<-data_final[-1]
+data_final<-as.data.frame(t(data_final))
+data_final<- data_final %>%
+  mutate(across(everything(), as.numeric))
+
+ zero_percentage <- colMeans(data_final == 0)
+data_final <- data_final[,zero_percentage < 0.8 ]
+
+
+
+# remove all the extraction and sequencing replicatate 
+# create vector with all sample IDs
+sample_ids <- rownames(data_final)
+
+# base ID = sample ID with trailing _r or _n stripped off
+base_ids <- sub("(_r|_n)$", "", sample_ids)
+
+# which rows are *_r or *_n
+is_rn <- grepl("(_r|_n)$", sample_ids)
+
+# base IDs that have at least one *_r or *_n sample
+bad_base_ids <- unique(base_ids[is_rn])
+
+# KEEP samples whose base ID is NOT in the bad set
+keep_samples <- !(base_ids %in% bad_base_ids)
+
+data_final <- data_final[keep_samples, , drop = FALSE]
+
+```
+
+
+```{r}
+# Download sample info
+info <- read_tsv ("/Users/arianna.lamanna/Downloads/S1.2_metadata_summary_zy.txt")
+colnames(info)[1] <- "Sample"
+info <- info[, c("Sample", "Diet","Age","Body_weight")]
+
+
+# separate between CD and HF
+
+samples <- row.names(data_final)
+info<-as.data.frame(t(info))
+colnames(info)<- info[1,]
+info<-info[,samples]
+
+data_final<-as.data.frame(t(data_final))
+
+Data<-rbind(info,data_final)
+
+Data<- as.data.frame(t(Data))
+
+Data_HF <- Data[Data$Diet=="HF",]
+Data_CD <- Data[Data$Diet=="CD",]
+
+
+Weight_HF <- Data_HF$Body_weight
+Weight_HF<- as.numeric(Weight_HF)
+Weight_CD <- Data_CD$Body_weight
+Weight_CD<- as.numeric(Weight_CD)
+
+Age_HF <- Data_HF$Age
+Age_HF<- as.numeric(Age_HF)
+Age_CD <- Data_CD$Age
+Age_CD<- as.numeric(Age_CD)
+
+
+Data_HF_Final <- Data_HF[,-c(1:4)]
+Data_HF_Final<- Data_HF_Final %>%
+  mutate(across(everything(), as.numeric))
+
+Data_CD_Final <- Data_CD[,-c(1:4)]
+Data_CD_Final<- Data_CD_Final %>%
+  mutate(across(everything(), as.numeric))
+
+
+# For the regression of all data without separation between CD and HF
+Weight <- Data$Body_weight
+Weight <- as.numeric(as.character(Data$Body_weight))
+
+
+Data_Final <- Data[,-c(1:4)]
+Data_Final<- Data_Final %>%
+  mutate(across(everything(), as.numeric))
+```
+
+
+```{r}
+# Regression model for CD all features 
+
+#for reproducability
+set.seed(123)
+
+x_raw <- Data_CD_Final   # taxa matrix
+y     <- Weight_CD       # continuous outcome 
+
+# Impute zeros once
+x <- impute_zeros(x_raw)
+n <- nrow(x)
+
+# create predict function (not provided in the package)
+predict_coda_signature <- function(fit, newx) {
+  taxa <- fit$taxa.name # extract taxa
+  beta <- fit$`log-contrast coefficients` # extract coefficients
+  newx <- impute_zeros(newx) # impute zeros needed for log-ratios
+  newx_sel <- newx[, taxa, drop = FALSE] # keep only selected taxa
+  sig <- as.vector(as.matrix(log(newx_sel)) %*% beta) # compute the log-contrast
+  sig
+}
+
+# set number of iterations
+n_iter  <- 20
+all_res <- vector("list", n_iter)  # to hold data.frames with (id, y, pred)
+cor_vals <- numeric(n_iter)        # correlation for each test set
+
+
+for (i in 1:n_iter) {
+  
+# data split 80% train 20% test
+  
+  train_idx <- sample(seq_len(n), size = floor(0.8 * n))
+  test_idx  <- setdiff(seq_len(n), train_idx)
+  
+  x_train <- x[train_idx, , drop = FALSE]
+  y_train <- y[train_idx]
+  
+  x_test  <- x[test_idx, , drop = FALSE]
+  y_test  <- y[test_idx]
+  
+  # Fit coda_glmnet on train set only
+  fit <- coda_glmnet(
+    x         = x_train,
+    y         = y_train,
+    lambda    = "lambda.min",
+    nfolds    = 10,
+    showPlots = FALSE
+  )
+  
+  # if no taxa selected, skip this iteration
+  if (is.null(fit$taxa.name) || length(fit$taxa.name) == 0) {
+    all_res[[i]] <- NULL
+    cor_vals[i]  <- NA
+    next
+  }
+  
+  #  Recover internal mapping from signature fitted using teh train set
+  sig_train <- predict_coda_signature(fit, x_train)
+  y_hat_train_internal <- fit$predictions  # internal fitted values
+  
+  # mapping used a + b * sig_train to translate the signature value to actual bodyweigth value
+  scale_fit <- lm(y_hat_train_internal ~ sig_train)
+  
+  #  Apply trained coda_glmnet model to test set
+  sig_test <- predict_coda_signature(fit, x_test)
+  
+  # predicted body weight on TEST set
+  y_pred_test <- predict(scale_fit,
+                         newdata = data.frame(sig_train = sig_test))
+  
+  # store results with their sample IDs
+  all_res[[i]] <- data.frame(
+    id   = test_idx,   # sample index
+    y    = y_test,
+    pred = y_pred_test
+  )
+  
+  # correlation on this test set
+  cor_vals[i] <- cor(y_test, y_pred_test, use = "complete.obs")
+}
+
+# remove empty iterations if any
+keep      <- !sapply(all_res, is.null)
+all_res   <- all_res[keep]
+cor_vals  <- cor_vals[keep]
+
+# Average predictions per sample across iterations
+df_all <- do.call(rbind, all_res)
+
+# For each sample id, average predictions across all iteration
+df_plot <- aggregate(cbind(pred, y) ~ id, data = df_all, FUN = mean)
+
+names(df_plot)[names(df_plot) == "pred"] <- "predictions"
+
+# overall correlation using mean prediction per sample
+cor_res <- cor.test(df_plot$predictions, df_plot$y, method = "pearson")
+R_val   <- cor_res$estimate[[1]]
+p_val   <- cor_res$p.value
+
+# mean and standard deviation of per-iteration correlations
+mean_R <- mean(cor_vals, na.rm = TRUE)
+sd_R   <- sd(cor_vals,   na.rm = TRUE)
+
+# Plot predicted vs observed body Weight 
+ggplot(df_plot, aes(x = predictions, y = y)) +
+  geom_point(color = "#1f77b4") +
+  geom_smooth(method = "lm", se = TRUE,
+              color = "#ff5733", fill = "#ffecd9") +
+  annotate(
+    "text",
+    x = min(df_plot$predictions) + 0.05 * diff(range(df_plot$predictions)),
+    y = max(df_plot$y) - 0.05 * diff(range(df_plot$y)),
+    hjust = 0,
+    label = paste0(
+      "R = ", round(R_val, 2),
+      ", p = ", format.pval(p_val, digits = 2)
+    ),
+    size = 5
+  ) +
+  labs(
+    x = "Predicted body Weight (mean across iterations)",
+    y = "Observed body Weight"
+  ) +
+  theme_classic(base_size = 14)
+```
+
+
+```{r}
+# Regression model for HF all features 
+
+#for reproducability
+set.seed(123)
+
+x_raw <- Data_HF_Final   # taxa matrix
+y     <- Weight_HF       # continuous outcome 
+
+# Impute zeros once
+x <- impute_zeros(x_raw)
+n <- nrow(x)
+
+# create predict function (not provided in the package)
+predict_coda_signature <- function(fit, newx) {
+  taxa <- fit$taxa.name # extract taxa
+  beta <- fit$`log-contrast coefficients` # extract coefficients
+  newx <- impute_zeros(newx) # impute zeros needed for log-ratios
+  newx_sel <- newx[, taxa, drop = FALSE] # keep only selected taxa
+  sig <- as.vector(as.matrix(log(newx_sel)) %*% beta) # compute the log-contrast
+  sig
+}
+
+# set number of iterations
+n_iter  <- 20
+all_res <- vector("list", n_iter)  # to hold data.frames with (id, y, pred)
+cor_vals <- numeric(n_iter)        # correlation for each test set
+
+
+for (i in 1:n_iter) {
+  
+# data split 80% train 20% test
+  
+  train_idx <- sample(seq_len(n), size = floor(0.8 * n))
+  test_idx  <- setdiff(seq_len(n), train_idx)
+  
+  x_train <- x[train_idx, , drop = FALSE]
+  y_train <- y[train_idx]
+  
+  x_test  <- x[test_idx, , drop = FALSE]
+  y_test  <- y[test_idx]
+  
+  # Fit coda_glmnet on train set only
+  fit <- coda_glmnet(
+    x         = x_train,
+    y         = y_train,
+    lambda    = "lambda.min",
+    nfolds    = 10,
+    showPlots = FALSE
+  )
+  
+  # if no taxa selected, skip this iteration
+  if (is.null(fit$taxa.name) || length(fit$taxa.name) == 0) {
+    all_res[[i]] <- NULL
+    cor_vals[i]  <- NA
+    next
+  }
+  
+  #  Recover internal mapping from signature fitted using teh train set
+  sig_train <- predict_coda_signature(fit, x_train)
+  y_hat_train_internal <- fit$predictions  # internal fitted values
+  
+  # mapping used a + b * sig_train to translate the signature value to actual bodyweigth value
+  scale_fit <- lm(y_hat_train_internal ~ sig_train)
+  
+  #  Apply trained coda_glmnet model to test set
+  sig_test <- predict_coda_signature(fit, x_test)
+  
+  # predicted body weight on TEST set
+  y_pred_test <- predict(scale_fit,
+                         newdata = data.frame(sig_train = sig_test))
+  
+  # store results with their sample IDs
+  all_res[[i]] <- data.frame(
+    id   = test_idx,   # sample index
+    y    = y_test,
+    pred = y_pred_test
+  )
+  
+  # correlation on this test set
+  cor_vals[i] <- cor(y_test, y_pred_test, use = "complete.obs")
+}
+
+# remove empty iterations if any
+keep      <- !sapply(all_res, is.null)
+all_res   <- all_res[keep]
+cor_vals  <- cor_vals[keep]
+
+# Average predictions per sample across iterations
+df_all <- do.call(rbind, all_res)
+
+# For each sample id, average predictions across all iteration
+df_plot <- aggregate(cbind(pred, y) ~ id, data = df_all, FUN = mean)
+
+names(df_plot)[names(df_plot) == "pred"] <- "predictions"
+
+# overall correlation using mean prediction per sample
+cor_res <- cor.test(df_plot$predictions, df_plot$y, method = "pearson")
+R_val   <- cor_res$estimate[[1]]
+p_val   <- cor_res$p.value
+
+# mean and standard deviation of per-iteration correlations
+mean_R <- mean(cor_vals, na.rm = TRUE)
+sd_R   <- sd(cor_vals,   na.rm = TRUE)
+
+# Plot predicted vs observed body Weight 
+ggplot(df_plot, aes(x = predictions, y = y)) +
+  geom_point(color = "#1f77b4") +
+  geom_smooth(method = "lm", se = TRUE,
+              color = "#ff5733", fill = "#ffecd9") +
+  annotate(
+    "text",
+    x = min(df_plot$predictions) + 0.05 * diff(range(df_plot$predictions)),
+    y = max(df_plot$y) - 0.05 * diff(range(df_plot$y)),
+    hjust = 0,
+    label = paste0(
+      "R = ", round(R_val, 2),
+      ", p = ", format.pval(p_val, digits = 2)
+    ),
+    size = 5
+  ) +
+  labs(
+    x = "Predicted body Weight (mean across iterations)",
+    y = "Observed body Weight"
+  ) +
+  theme_classic(base_size = 14)
+```
+
+```{r}
+# Regression model all samples and all features 
+
+#for reproducability
+set.seed(123)
+
+x_raw <- Data_Final   # taxa matrix
+y     <- Weight      # continuous outcome 
+
+# Impute zeros once
+x <- impute_zeros(x_raw)
+n <- nrow(x)
+
+# create predict function (not provided in the package)
+predict_coda_signature <- function(fit, newx) {
+  taxa <- fit$taxa.name # extract taxa
+  beta <- fit$`log-contrast coefficients` # extract coefficients
+  newx <- impute_zeros(newx) # impute zeros needed for log-ratios
+  newx_sel <- newx[, taxa, drop = FALSE] # keep only selected taxa
+  sig <- as.vector(as.matrix(log(newx_sel)) %*% beta) # compute the log-contrast
+  sig
+}
+
+# set number of iterations
+n_iter  <- 20
+all_res <- vector("list", n_iter)  # to hold data.frames with (id, y, pred)
+cor_vals <- numeric(n_iter)        # correlation for each test set
+
+
+for (i in 1:n_iter) {
+  
+# data split 80% train 20% test
+  
+  train_idx <- sample(seq_len(n), size = floor(0.8 * n))
+  test_idx  <- setdiff(seq_len(n), train_idx)
+  
+  x_train <- x[train_idx, , drop = FALSE]
+  y_train <- y[train_idx]
+  
+  x_test  <- x[test_idx, , drop = FALSE]
+  y_test  <- y[test_idx]
+  
+  # Fit coda_glmnet on train set only
+  fit <- coda_glmnet(
+    x         = x_train,
+    y         = y_train,
+    lambda    = "lambda.min",
+    nfolds    = 10,
+    showPlots = FALSE
+  )
+  
+  # if no taxa selected, skip this iteration
+  if (is.null(fit$taxa.name) || length(fit$taxa.name) == 0) {
+    all_res[[i]] <- NULL
+    cor_vals[i]  <- NA
+    next
+  }
+  
+  #  Recover internal mapping from signature fitted using teh train set
+  sig_train <- predict_coda_signature(fit, x_train)
+  y_hat_train_internal <- fit$predictions  # internal fitted values
+  
+  # mapping used a + b * sig_train to translate the signature value to actual bodyweigth value
+  scale_fit <- lm(y_hat_train_internal ~ sig_train)
+  
+  #  Apply trained coda_glmnet model to test set
+  sig_test <- predict_coda_signature(fit, x_test)
+  
+  # predicted body weight on TEST set
+  y_pred_test <- predict(scale_fit,
+                         newdata = data.frame(sig_train = sig_test))
+  
+  # store results with their sample IDs
+  all_res[[i]] <- data.frame(
+    id   = test_idx,   # sample index
+    y    = y_test,
+    pred = y_pred_test
+  )
+  
+  # correlation on this test set
+  cor_vals[i] <- cor(y_test, y_pred_test, use = "complete.obs")
+}
+
+# remove empty iterations if any
+keep      <- !sapply(all_res, is.null)
+all_res   <- all_res[keep]
+cor_vals  <- cor_vals[keep]
+
+# Average predictions per sample across iterations
+df_all <- do.call(rbind, all_res)
+
+# For each sample id, average predictions across all iteration
+df_plot <- aggregate(cbind(pred, y) ~ id, data = df_all, FUN = mean)
+
+names(df_plot)[names(df_plot) == "pred"] <- "predictions"
+
+# overall correlation using mean prediction per sample
+cor_res <- cor.test(df_plot$predictions, df_plot$y, method = "pearson")
+R_val   <- cor_res$estimate[[1]]
+p_val   <- cor_res$p.value
+
+# mean and standard deviation of per-iteration correlations
+mean_R <- mean(cor_vals, na.rm = TRUE)
+sd_R   <- sd(cor_vals,   na.rm = TRUE)
+
+# Plot predicted vs observed body Weight 
+ggplot(df_plot, aes(x = predictions, y = y)) +
+  geom_point(color = "#1f77b4") +
+  geom_smooth(method = "lm", se = TRUE,
+              color = "#ff5733", fill = "#ffecd9") +
+  annotate(
+    "text",
+    x = min(df_plot$predictions) + 0.05 * diff(range(df_plot$predictions)),
+    y = max(df_plot$y) - 0.05 * diff(range(df_plot$y)),
+    hjust = 0,
+    label = paste0(
+      "R = ", round(R_val, 2),
+      ", p = ", format.pval(p_val, digits = 2)
+    ),
+    size = 5
+  ) +
+  labs(
+    x = "Predicted body Weight (mean across iterations)",
+    y = "Observed body Weight"
+  ) +
+  theme_classic(base_size = 14)
+```
+
+```{r}
+
+### Regression model All Data 50 features 
+
+# For Reproducability
+set.seed(123)
+
+#Prepare Data 
+x_raw <- Data_Final   # taxa matrix/data.frame (samples x taxa)
+y     <- Weight       # continuous outcome (vector)
+
+
+
+# Global model on ALL taxa and ALL samples
+x_imputed <- impute_zeros(x_raw)
+
+fit_global <- suppressMessages(
+  coda_glmnet(
+    x         = x_imputed,
+    y         = y,
+    lambda    = "lambda.min",
+    nfolds    = 10,
+    showPlots = FALSE
+  )
+)
+
+if (is.null(fit_global$taxa.name) || length(fit_global$taxa.name) == 0) {
+  stop("Global model selected no taxa; cannot define top 50 features.")
+}
+
+taxa_global <- fit_global$taxa.name
+beta_global <- fit_global$`log-contrast coefficients`
+
+# sort selected taxa by importance (absolute coefficient size)
+ord   <- order(abs(beta_global), decreasing = TRUE)
+top_k <- 50L
+k_use <- min(top_k, length(ord))
+
+top_taxa <- taxa_global[ord[seq_len(k_use)]]
+
+
+#  Subset data to these top taxa
+
+x_top <- x_raw[, top_taxa, drop = FALSE]
+x_top_imputed <- impute_zeros(x_top)
+n <- nrow(x_top_imputed)
+
+# create predict function (not provided in the package)
+predict_coda_signature <- function(fit, newx) {
+  taxa <- fit$taxa.name
+  beta <- fit$`log-contrast coefficients`
+  newx <- impute_zeros(newx)
+  newx_sel <- newx[, taxa, drop = FALSE]
+  sig <- as.vector(as.matrix(log(newx_sel)) %*% beta)
+  sig
+}
+
+# 20 iterations of 80/20 train–test splits on subset data
+
+n_iter   <- 20
+all_res  <- vector("list", n_iter)  
+cor_vals <- numeric(n_iter)
+
+for (i in 1:n_iter) {
+  
+  # split into train 80% and test 20% set
+  train_idx <- sample(seq_len(n), size = floor(0.8 * n))
+  test_idx  <- setdiff(seq_len(n), train_idx)
+  
+  x_train <- x_top_imputed[train_idx, , drop = FALSE]
+  y_train <- y[train_idx]
+  
+  x_test  <- x_top_imputed[test_idx, , drop = FALSE]
+  y_test  <- y[test_idx]
+  
+  # Fit coda_glmnet on on train only
+  fit_sub <- suppressMessages(
+    coda_glmnet(
+      x         = x_train,
+      y         = y_train,
+      lambda    = "lambda.min",
+      nfolds    = 10,
+      showPlots = FALSE
+    )
+  )
+  
+  # if no taxa selected, skip this iteration
+  if (is.null(fit_sub$taxa.name) || length(fit_sub$taxa.name) == 0) {
+    all_res[[i]] <- NULL
+    cor_vals[i]  <- NA
+    next
+  }
+  
+  # Map signature -> fitted y on train
+  sig_train <- predict_coda_signature(fit_sub, x_train)
+  y_hat_train_internal <- fit_sub$predictions
+  
+  scale_fit <- lm(y_hat_train_internal ~ sig_train)
+  
+  # Predict on test set
+  sig_test <- predict_coda_signature(fit_sub, x_test)
+  y_pred_test <- predict(scale_fit, newdata = data.frame(sig_train = sig_test))
+  
+  # store results with their sample indices
+  all_res[[i]] <- data.frame(
+    id   = test_idx,
+    y    = y_test,
+    pred = y_pred_test
+  )
+  
+  cor_vals[i] <- cor(y_test, y_pred_test, use = "complete.obs")
+}
+
+# remove empty iterations if any
+keep_iter <- !sapply(all_res, is.null)
+all_res   <- all_res[keep_iter]
+cor_vals  <- cor_vals[keep_iter]
+
+if (length(all_res) == 0) {
+  stop("All 20 iterations selected no variables; try changing alpha/lambda or pre-filtering taxa.")
+}
+
+
+# Average predictions per sample across iterations
+
+df_all <- do.call(rbind, all_res)
+
+df_plot <- aggregate(cbind(pred, y) ~ id, data = df_all, FUN = mean)
+names(df_plot)[names(df_plot) == "pred"] <- "predictions"
+
+# add  sample names 
+df_plot$sample_id <- rownames(x_top_imputed)[df_plot$id]
+
+# overall correlation using mean prediction per sample
+cor_res <- cor.test(df_plot$predictions, df_plot$y, method = "pearson")
+R_val   <- unname(cor_res$estimate)
+p_val   <- cor_res$p.value
+
+# mean and standard deviation d of per-iteration correlations
+mean_R <- mean(cor_vals, na.rm = TRUE)
+sd_R   <- sd(cor_vals,   na.rm = TRUE)
+
+
+# Plot predicted vs observed body Weight 
+
+ggplot(df_plot, aes(x = predictions, y = y)) +
+  geom_point(color = "#1f77b4") +
+  geom_smooth(method = "lm", se = TRUE,
+              color = "#ff5733", fill = "#ffecd9") +
+  annotate(
+    "text",
+    x = min(df_plot$predictions) + 0.05 * diff(range(df_plot$predictions)),
+    y = max(df_plot$y) - 0.05 * diff(range(df_plot$y)),
+    hjust = 0,
+    label = paste0(
+      "R = ", round(R_val, 2),
+      ", p = ", format.pval(p_val, digits = 2),
+      "\nmean R (per split) = ", round(mean_R, 2),
+      " ± ", round(sd_R, 2)
+    ),
+    size = 5
+  ) +
+  labs(
+    title = "Predicted vs observed body weight 50 species selected by global coda_glmnet model ",
+    x = "Predicted body weight",
+    y = "Observed body weight"
+  ) +
+  theme_classic(base_size = 14)
+```
+
+```{r}
+
+### Regression model 50 features in CD
+
+# For Reproducability
+set.seed(123)
+
+#Prepare Data 
+x_raw <- Data_CD_Final   # taxa matrix/data.frame (samples x taxa)
+y     <- Weight_CD       # continuous outcome (vector)
+
+
+
+# Global model on ALL taxa and ALL samples
+x_imputed <- impute_zeros(x_raw)
+
+fit_global <- suppressMessages(
+  coda_glmnet(
+    x         = x_imputed,
+    y         = y,
+    lambda    = "lambda.min",
+    nfolds    = 10,
+    showPlots = FALSE
+  )
+)
+
+if (is.null(fit_global$taxa.name) || length(fit_global$taxa.name) == 0) {
+  stop("Global model selected no taxa; cannot define top 50 features.")
+}
+
+taxa_global <- fit_global$taxa.name
+beta_global <- fit_global$`log-contrast coefficients`
+
+# sort selected taxa by importance (absolute coefficient size)
+ord   <- order(abs(beta_global), decreasing = TRUE)
+top_k <- 50L
+k_use <- min(top_k, length(ord))
+
+top_taxa <- taxa_global[ord[seq_len(k_use)]]
+
+
+#  Subset data to these top taxa
+
+x_top <- x_raw[, top_taxa, drop = FALSE]
+x_top_imputed <- impute_zeros(x_top)
+n <- nrow(x_top_imputed)
+
+# create predict function (not provided in the package)
+predict_coda_signature <- function(fit, newx) {
+  taxa <- fit$taxa.name
+  beta <- fit$`log-contrast coefficients`
+  newx <- impute_zeros(newx)
+  newx_sel <- newx[, taxa, drop = FALSE]
+  sig <- as.vector(as.matrix(log(newx_sel)) %*% beta)
+  sig
+}
+
+# 20 iterations of 80/20 train–test splits on subset data
+
+n_iter   <- 20
+all_res  <- vector("list", n_iter)  
+cor_vals <- numeric(n_iter)
+
+for (i in 1:n_iter) {
+  
+  # split into train 80% and test 20% set
+  train_idx <- sample(seq_len(n), size = floor(0.8 * n))
+  test_idx  <- setdiff(seq_len(n), train_idx)
+  
+  x_train <- x_top_imputed[train_idx, , drop = FALSE]
+  y_train <- y[train_idx]
+  
+  x_test  <- x_top_imputed[test_idx, , drop = FALSE]
+  y_test  <- y[test_idx]
+  
+  # Fit coda_glmnet on on train only
+  fit_sub <- suppressMessages(
+    coda_glmnet(
+      x         = x_train,
+      y         = y_train,
+      lambda    = "lambda.min",
+      nfolds    = 10,
+      showPlots = FALSE
+    )
+  )
+  
+  # if no taxa selected, skip this iteration
+  if (is.null(fit_sub$taxa.name) || length(fit_sub$taxa.name) == 0) {
+    all_res[[i]] <- NULL
+    cor_vals[i]  <- NA
+    next
+  }
+  
+  # Map signature -> fitted y on train
+  sig_train <- predict_coda_signature(fit_sub, x_train)
+  y_hat_train_internal <- fit_sub$predictions
+  
+  scale_fit <- lm(y_hat_train_internal ~ sig_train)
+  
+  # Predict on test set
+  sig_test <- predict_coda_signature(fit_sub, x_test)
+  y_pred_test <- predict(scale_fit, newdata = data.frame(sig_train = sig_test))
+  
+  # store results with their sample indices
+  all_res[[i]] <- data.frame(
+    id   = test_idx,
+    y    = y_test,
+    pred = y_pred_test
+  )
+  
+  cor_vals[i] <- cor(y_test, y_pred_test, use = "complete.obs")
+}
+
+# remove empty iterations if any
+keep_iter <- !sapply(all_res, is.null)
+all_res   <- all_res[keep_iter]
+cor_vals  <- cor_vals[keep_iter]
+
+if (length(all_res) == 0) {
+  stop("All 20 iterations selected no variables; try changing alpha/lambda or pre-filtering taxa.")
+}
+
+
+# Average predictions per sample across iterations
+
+df_all <- do.call(rbind, all_res)
+
+df_plot <- aggregate(cbind(pred, y) ~ id, data = df_all, FUN = mean)
+names(df_plot)[names(df_plot) == "pred"] <- "predictions"
+
+# add  sample names 
+df_plot$sample_id <- rownames(x_top_imputed)[df_plot$id]
+
+# overall correlation using mean prediction per sample
+cor_res <- cor.test(df_plot$predictions, df_plot$y, method = "pearson")
+R_val   <- unname(cor_res$estimate)
+p_val   <- cor_res$p.value
+
+# mean and standard deviation d of per-iteration correlations
+mean_R <- mean(cor_vals, na.rm = TRUE)
+sd_R   <- sd(cor_vals,   na.rm = TRUE)
+
+
+# Plot predicted vs observed body Weight 
+
+ggplot(df_plot, aes(x = predictions, y = y)) +
+  geom_point(color = "#1f77b4") +
+  geom_smooth(method = "lm", se = TRUE,
+              color = "#ff5733", fill = "#ffecd9") +
+  annotate(
+    "text",
+    x = min(df_plot$predictions) + 0.05 * diff(range(df_plot$predictions)),
+    y = max(df_plot$y) - 0.05 * diff(range(df_plot$y)),
+    hjust = 0,
+    label = paste0(
+      "R = ", round(R_val, 2),
+      ", p = ", format.pval(p_val, digits = 2),
+      "\nmean R (per split) = ", round(mean_R, 2),
+      " ± ", round(sd_R, 2)
+    ),
+    size = 5
+  ) +
+  labs(
+    title = "Predicted vs observed body weight 50 species selected by global coda_glmnet model in CD",
+    x = "Predicted body weight",
+    y = "Observed body weight"
+  ) +
+  theme_classic(base_size = 14)
+```
+
+```{r}
+
+### Regression model 50 features in HF
+
+# For Reproducability
+set.seed(123)
+
+#Prepare Data 
+x_raw <- Data_HF_Final   # taxa matrix/data.frame (samples x taxa)
+y     <- Weight_HF       # continuous outcome (vector)
+
+
+
+# Global model on ALL taxa and ALL samples
+x_imputed <- impute_zeros(x_raw)
+
+fit_global <- suppressMessages(
+  coda_glmnet(
+    x         = x_imputed,
+    y         = y,
+    lambda    = "lambda.min",
+    nfolds    = 10,
+    showPlots = FALSE
+  )
+)
+
+if (is.null(fit_global$taxa.name) || length(fit_global$taxa.name) == 0) {
+  stop("Global model selected no taxa; cannot define top 50 features.")
+}
+
+taxa_global <- fit_global$taxa.name
+beta_global <- fit_global$`log-contrast coefficients`
+
+# sort selected taxa by importance (absolute coefficient size)
+ord   <- order(abs(beta_global), decreasing = TRUE)
+top_k <- 50L
+k_use <- min(top_k, length(ord))
+
+top_taxa <- taxa_global[ord[seq_len(k_use)]]
+
+
+#  Subset data to these top taxa
+
+x_top <- x_raw[, top_taxa, drop = FALSE]
+x_top_imputed <- impute_zeros(x_top)
+n <- nrow(x_top_imputed)
+
+# create predict function (not provided in the package)
+predict_coda_signature <- function(fit, newx) {
+  taxa <- fit$taxa.name
+  beta <- fit$`log-contrast coefficients`
+  newx <- impute_zeros(newx)
+  newx_sel <- newx[, taxa, drop = FALSE]
+  sig <- as.vector(as.matrix(log(newx_sel)) %*% beta)
+  sig
+}
+
+# 20 iterations of 80/20 train–test splits on subset data
+
+n_iter   <- 20
+all_res  <- vector("list", n_iter)  
+cor_vals <- numeric(n_iter)
+
+for (i in 1:n_iter) {
+  
+  # split into train 80% and test 20% set
+  train_idx <- sample(seq_len(n), size = floor(0.8 * n))
+  test_idx  <- setdiff(seq_len(n), train_idx)
+  
+  x_train <- x_top_imputed[train_idx, , drop = FALSE]
+  y_train <- y[train_idx]
+  
+  x_test  <- x_top_imputed[test_idx, , drop = FALSE]
+  y_test  <- y[test_idx]
+  
+  # Fit coda_glmnet on on train only
+  fit_sub <- suppressMessages(
+    coda_glmnet(
+      x         = x_train,
+      y         = y_train,
+      lambda    = "lambda.min",
+      nfolds    = 10,
+      showPlots = FALSE
+    )
+  )
+  
+  # if no taxa selected, skip this iteration
+  if (is.null(fit_sub$taxa.name) || length(fit_sub$taxa.name) == 0) {
+    all_res[[i]] <- NULL
+    cor_vals[i]  <- NA
+    next
+  }
+  
+  # Map signature -> fitted y on train
+  sig_train <- predict_coda_signature(fit_sub, x_train)
+  y_hat_train_internal <- fit_sub$predictions
+  
+  scale_fit <- lm(y_hat_train_internal ~ sig_train)
+  
+  # Predict on test set
+  sig_test <- predict_coda_signature(fit_sub, x_test)
+  y_pred_test <- predict(scale_fit, newdata = data.frame(sig_train = sig_test))
+  
+  # store results with their sample indices
+  all_res[[i]] <- data.frame(
+    id   = test_idx,
+    y    = y_test,
+    pred = y_pred_test
+  )
+  
+  cor_vals[i] <- cor(y_test, y_pred_test, use = "complete.obs")
+}
+
+# remove empty iterations if any
+keep_iter <- !sapply(all_res, is.null)
+all_res   <- all_res[keep_iter]
+cor_vals  <- cor_vals[keep_iter]
+
+if (length(all_res) == 0) {
+  stop("All 20 iterations selected no variables; try changing alpha/lambda or pre-filtering taxa.")
+}
+
+
+# Average predictions per sample across iterations
+
+df_all <- do.call(rbind, all_res)
+
+df_plot <- aggregate(cbind(pred, y) ~ id, data = df_all, FUN = mean)
+names(df_plot)[names(df_plot) == "pred"] <- "predictions"
+
+# add  sample names 
+df_plot$sample_id <- rownames(x_top_imputed)[df_plot$id]
+
+# overall correlation using mean prediction per sample
+cor_res <- cor.test(df_plot$predictions, df_plot$y, method = "pearson")
+R_val   <- unname(cor_res$estimate)
+p_val   <- cor_res$p.value
+
+# mean and standard deviation d of per-iteration correlations
+mean_R <- mean(cor_vals, na.rm = TRUE)
+sd_R   <- sd(cor_vals,   na.rm = TRUE)
+
+
+# Plot predicted vs observed body Weight 
+
+ggplot(df_plot, aes(x = predictions, y = y)) +
+  geom_point(color = "#1f77b4") +
+  geom_smooth(method = "lm", se = TRUE,
+              color = "#ff5733", fill = "#ffecd9") +
+  annotate(
+    "text",
+    x = min(df_plot$predictions) + 0.05 * diff(range(df_plot$predictions)),
+    y = max(df_plot$y) - 0.05 * diff(range(df_plot$y)),
+    hjust = 0,
+    label = paste0(
+      "R = ", round(R_val, 2),
+      ", p = ", format.pval(p_val, digits = 2),
+      "\nmean R (per split) = ", round(mean_R, 2),
+      " ± ", round(sd_R, 2)
+    ),
+    size = 5
+  ) +
+  labs(
+    title = "Predicted vs observed body weight 50 species selected by global coda_glmnet model in HF",
+    x = "Predicted body weight",
+    y = "Observed body weight"
+  ) +
+  theme_classic(base_size = 14)
+```
+

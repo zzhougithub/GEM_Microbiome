@@ -1,0 +1,355 @@
+---
+title: "Correlation Lachnospiraceae M18-1 and Ido1"
+author: "Arianna"
+date: "2025-12-02"
+output: html_document
+---
+```{r}
+#### Libraries
+library(ggplot2)
+library(ggpubr)
+library(mediation)
+library(dplyr)
+```
+
+
+
+```{r}
+#### Download and Process Data 
+
+# Metagenome kraken2, Cecum Transcriptome and Phenotype
+
+MetaG <- read_tsv("/Users/arianna.lamanna/Downloads/S10_metaRNA_kraken2_abundance_zy.txt")
+rownames(MetaG) <- MetaG$species
+
+MetaG <- MetaG[MetaG$kingdom == "Bacteria",]
+
+CecumT <-  read_tsv("/Users/arianna.lamanna/Downloads/S3_mRNA_cecum_TPMLog2_zy.txt")
+rownames(CecumT)<- CecumT$gene
+
+Pheno <- read_tsv ("/Users/arianna.lamanna/Downloads/S1.2_metadata_summary_zy.txt")
+rownames(Pheno)<- Pheno$SampleID
+Pheno<- as.data.frame(t(Pheno))
+
+
+
+# Identify samples with overlap in both datasets 
+Common_Samples <- intersect(colnames(MetaG),colnames(CecumT))
+
+#Subset All datasets
+
+MetaG_overlap <- MetaG[,Common_Samples]
+rownames(MetaG_overlap) <- MetaG$species
+CecumT_overlap <- CecumT[,Common_Samples]
+rownames(CecumT_overlap) <- CecumT$gene
+Pheno_overlap <- Pheno[,Common_Samples]
+
+# Bind bacteria of interest, gene of interest and diet
+
+Data<- rbind(MetaG_overlap["Bacteria_Firmicutes_Clostridia_Clostridiales_Lachnospiraceae_Unknown_Unknown Lachnospiraceae bacterium M18-1",],CecumT_overlap["Ido1",],Pheno_overlap["Diet",])
+rownames(Data) <- c("Lachnospiraceae_bacterium_M18_1", "Ido1","Diet")
+
+Data_Final <- as.data.frame(t(Data))
+
+# muate as numeric
+
+Data_Final_num <- Data_Final %>%
+  mutate(across(everything(), as.numeric))
+
+Data_Final_num <- Data_Final_num[rownames(Data_Final) != "C072", ]
+Data_Final_num <- Data_Final_num[rownames(Data_Final) != "C081", ]
+
+```
+
+```{r}
+#### Correlation bacteria of interest and gene of interest in whole data
+
+ggscatter(Data_Final_num, x = "Ido1", y = "Lachnospiraceae_bacterium_M18_1", 
+          add = "reg.line", conf.int = TRUE, 
+          cor.coef = TRUE, cor.method = "spearman",
+          xlab = " Expression ", ylab = "Abundance",
+          title = "Correlation between Lachnospiraceae_bacterium_M18-1  and Ido1")
+
+
+```
+
+```{r}
+### Correlation bacteria of interest and gene of interest in whole data in CD
+
+### subset for CD
+
+Data_CD<- Data_Final[ Data_Final$Diet == "CD",]
+
+Data_CD_num <- Data_CD %>%
+  mutate(across(everything(), as.numeric))
+
+
+
+ggscatter(Data_CD_num, x = "Ido1", y = "Lachnospiraceae_bacterium_M18_1", 
+          add = "reg.line", conf.int = TRUE, 
+          cor.coef = TRUE, cor.method = "spearman",
+          xlab = " Expression ", ylab = "Abundance",
+          title = "Correlation between Lachnospiraceae_bacterium_M18-1  and Ido1 in CD")
+
+
+
+
+```
+```{r}
+
+### Correlation bacteria of interest and gene of interest in whole data in HF
+
+### subset for HF
+Data_HF<- Data_Final[ Data_Final$Diet == "HF",]
+
+Data_HF_num <- Data_HF %>%
+  mutate(across(everything(), as.numeric))
+
+
+### Create Correlation plot
+ggscatter(Data_HF_num, x = "Ido1", y = "Lachnospiraceae_bacterium_M18_1", 
+          add = "reg.line", conf.int = TRUE, 
+          cor.coef = TRUE, cor.method = "spearman",
+          xlab = " Expression ", ylab = "Abundance",
+          title = "Correlation between Lachnospiraceae_bacterium_M18-1  and Ido1 in HF")
+
+
+
+```
+
+```{r}
+### repeat everything with relative abundance
+
+
+# Make sure it's numeric (no weird characters)
+MetaG_overlap_num <- as.data.frame(apply(MetaG_overlap, 2, as.numeric))
+rownames(MetaG_overlap_num) <- rownames(MetaG_overlap)
+colnames(MetaG_overlap_num) <- colnames(MetaG_overlap)
+
+# Column sums = total reads per sample
+col_totals <- colSums(MetaG_overlap_num, na.rm = TRUE)
+
+# Relative abundance (%) = count / column sum * 100
+MetaG_rel_abund <- sweep(MetaG_overlap_num, 2, col_totals, FUN = "/") * 100
+
+# Optional: round for readability
+MetaG_rel_abund_rounded <- round(MetaG_rel_abund, 4)
+
+
+# Bind data 
+Data<- rbind(MetaG_rel_abund_rounded["Bacteria_Firmicutes_Clostridia_Clostridiales_Lachnospiraceae_Unknown_Unknown Lachnospiraceae bacterium M18-1",],CecumT_overlap["Ido1",],Pheno_overlap["Diet",])
+rownames(Data) <- c("Lachnospiraceae_bacterium_M18_1", "Ido1","Diet")
+
+Data_Final <- as.data.frame(t(Data))
+
+# muate as numeric
+
+Data_Final_num <- Data_Final %>%
+  mutate(across(everything(), as.numeric))
+
+
+Data_Final_num <- Data_Final_num[rownames(Data_Final) != "C072", ]
+Data_Final_num <- Data_Final_num[rownames(Data_Final) != "C081", ]
+
+```
+```{r}
+#### Correlation bacteria of interest and gene of interest in whole data
+
+ggscatter(Data_Final_num, x = "Ido1", y = "Lachnospiraceae_bacterium_M18_1", 
+          add = "reg.line", conf.int = TRUE, 
+          cor.coef = TRUE, cor.method = "spearman",
+          xlab = " Expression ", ylab = "Abundance",
+          title = "Correlation between Lachnospiraceae_bacterium_M18-1  and Ido1")
+
+```
+
+```{r}
+### Correlation bacteria of interest and gene of interest in whole data in CD
+
+### subset for CD
+
+Data_CD<- Data_Final[ Data_Final$Diet == "CD",]
+
+Data_CD_num <- Data_CD %>%
+  mutate(across(everything(), as.numeric))
+
+
+
+ggscatter(Data_CD_num, x = "Ido1", y = "Lachnospiraceae_bacterium_M18_1", 
+          add = "reg.line", conf.int = TRUE, 
+          cor.coef = TRUE, cor.method = "spearman",
+          xlab = " Expression ", ylab = "Abundance",
+          title = "Correlation between Lachnospiraceae_bacterium_M18-1  and Ido1 in CD")
+
+```
+```{r}
+
+### Correlation bacteria of interest and gene of interest in whole data in HF
+
+### subset for HF
+Data_HF<- Data_Final[ Data_Final$Diet == "HF",]
+
+Data_HF_num <- Data_HF %>%
+  mutate(across(everything(), as.numeric))
+
+
+### Create Correlation plot
+ggscatter(Data_HF_num, x = "Ido1", y = "Lachnospiraceae_bacterium_M18_1", 
+          add = "reg.line", conf.int = TRUE, 
+          cor.coef = TRUE, cor.method = "spearman",
+          xlab = " Expression ", ylab = "Abundance",
+          title = "Correlation between Lachnospiraceae_bacterium_M18-1  and Ido1 in HF")
+
+```
+
+```{r}
+######### Partial Correlation LAnchosipracea_bacterium_M18-1 and Ido1 adjusted for Diet
+
+# Prepare Data
+
+Data_Final$Lachnospiraceae_bacterium_M18_1 <-
+  as.numeric(Data_Final$Lachnospiraceae_bacterium_M18_1)
+
+Data_Final$Ido1 <- as.numeric(Data_Final$Ido1)
+
+Data_Final$Diet <- factor(Data_Final$Diet) 
+
+# remove outlier
+
+Data_Final <- Data_Final[rownames(Data_Final) != "C072", ]
+Data_Final <- Data_Final[rownames(Data_Final) != "C081", ]
+
+
+
+# Partial spearman correlation (adjusted for Diet)
+
+
+# Linear Regress of each variable vs Diet
+fit_lachno <- lm(Lachnospiraceae_bacterium_M18_1 ~ Diet, data = Data_Final)
+fit_ido1  <- lm(Ido1 ~ Diet, data = Data_Final)
+
+# Residuals = variation not explained by Diet
+res_lachno <- residuals(fit_lachno)
+res_ido1  <- residuals(fit_ido1)
+
+# Partial Spearman correlation on residuals
+partial_spearman <- cor.test(
+  res_lachno,
+  res_ido1,
+  method = "spearman",
+  use    = "complete.obs"
+)
+
+partial_spearman  # print result in console
+
+# Extract rho, R^2, and p-value
+rho  <- as.numeric(partial_spearman$estimate)
+R2   <- rho^2
+pval <- partial_spearman$p.value
+
+
+## Plot with p-value and R^2 on the correlation graphic
+
+df_partial <- data.frame(
+  res_Lachnospiraceae = res_lachno,
+  res_Ido1            = res_ido1
+)
+
+
+x_pos <- min(df_partial$res_Ido1) +
+  0.05 * diff(range(df_partial$res_Ido1))
+y_pos <- max(df_partial$res_Lachnospiraceae) -
+  0.05 * diff(range(df_partial$res_Lachnospiraceae))
+
+ggplot(df_partial, aes(x = res_Ido1, y = res_Lachnospiraceae)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = TRUE) +
+  annotate(
+    "text",
+    x = x_pos,
+    y = y_pos,
+    hjust = 0,
+    label = paste0(
+      "Spearman rho = ", round(rho, 2),
+      "\nR² = ", round(R2, 2),
+      "\np = ", signif(pval, 3)
+    ),
+    size = 5
+  ) +
+  labs(
+    title = "Partial correlation: Lachnospiraceae_bacterium_M18_1 vs Ido1\n(adjusted for Diet)",
+    x = "Residual Ido1 (adjusted for Diet)",
+    y = "Residual Lachnospiraceae_bacterium_M18_1 (adjusted for Diet)"
+  ) +
+  theme_classic()
+
+
+
+```
+```{r}
+##### Mediation Analysis 
+
+
+# Prepare Data
+Data_med <- Data_Final
+
+
+# Mutate abundance and expression as numeric and Diet as factor
+Data_med <- Data_med %>%
+  mutate(
+    Diet  = factor(Diet),   
+    
+    Diet  = relevel(Diet, ref = "CD"),
+    Lachnospiraceae_bacterium_M18_1 = as.numeric(Lachnospiraceae_bacterium_M18_1),
+    Ido1  = as.numeric(Ido1)
+  ) %>%
+  filter(complete.cases(Diet,
+                        Lachnospiraceae_bacterium_M18_1,
+                        Ido1))
+
+
+
+## Mediation models
+##    X = Diet
+##    M = Lachnospiraceae_bacterium_M18_1
+##    Y = Ido1
+
+
+# Mediator model: does Diet affect Lachnospiraceae?
+m.mod <- lm(
+  Lachnospiraceae_bacterium_M18_1 ~ Diet,
+  data = Data_med
+)
+
+# Outcome model: does Diet & Lachnospiraceae affect Ido1?
+y.mod <- lm(
+  Ido1 ~ Diet + Lachnospiraceae_bacterium_M18_1,
+  data = Data_med
+)
+
+summary(m.mod)
+summary(y.mod)
+
+# Mediation analysis 
+
+set.seed(123)  # for reproducible CIs
+
+med.out <- mediate(
+  model.m      = m.mod,
+  model.y      = y.mod,
+  treat        = "Diet",                             # exposure variable
+  mediator     = "Lachnospiraceae_bacterium_M18_1",  # mediator
+  treat.value  = "HF",                               # HF vs CD
+  control.value = "CD",
+  boot         = TRUE,
+  sims         = 1000
+)
+
+summary(med.out)
+
+
+
+
+```
+
+
