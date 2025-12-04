@@ -1,4 +1,4 @@
-############### packages
+############### packages - These are all the libraries 
 library(dplyr)
 library(tidyr) 
 library(tidyverse)
@@ -45,9 +45,13 @@ MTabun <- read.table("S5_metaRNA_metaphlan4_abundance_zy.txt", header=T, na.stri
 MGpath <- read_tsv("S6_metaDNA_humann3.8_pathabundance_relab_zy.txt", col_types = cols(), na = "")
 MTpath <- read_tsv("S7_metaRNA_humann3.8_pathabundance_relab_zy.txt", col_types = cols(), na = "")
 
+## For the "metadata" data frame, take care that some metadata analyses require removing replicate samples (all those with _r or _n suffixes)!! These are technical replicates of the exact same mouse.
+  
+  
+############### Fig1 A&B ; 
+# Hand-drawn figures
 
-
-############### Fig1 C&D ; FigS1 D 
+############### Fig1 C ; FigS1 D 
 mRNA_pre <- BXD.Data.Pre(df = mRNAlog2, datatype = "mRNA")
 BXD.Anova.plot(mRNA_pre, metadata)
 BXD.Fstat.plot(mRNA_pre, metadata)
@@ -58,11 +62,59 @@ BXD.Anova.plot(MG_pre, metadata)
 MT_pre <- BXD.Data.Pre(df = MTabun, datatype = "abundance", taxlevel = "species")
 BXD.Anova.plot(MT_pre, metadata)
 
+############### Fig1 D ; 
+
+# This code is in the separate file 2_VariancesExplained_Code.r
+
+############### Fig S1 F
+
+# This code is in the separate file 2_MGMTCorrelations_FigS1F.R
 
 
 ############### Fig1 E&F 
 degDiet <- BXD.DEG.plot(mRNAraw, metadata, label_n = 20, group = "Diet")
 degAge <- BXD.DEG.plot(mRNAraw, metadata, label_n = 20, group = "Age")
+
+
+############### Fig1 G, Left
+# Uses the below code, but on the liver data from Supplemental Data 1 from our previous publication on the same mice but looking at liver gene expression data
+# https://www.sciencedirect.com/science/article/pii/S2405471221003446?via%3Dihub#mmc8
+
+# CD and HF variables use the following row:
+# mRNA_43016_Cyp2c55
+
+############### Fig1 G, Right
+
+mRNAlog2Diets=c("HF","CD","HF","CD","HF","HF","CD","HF","CD","CD","CD","HF","HF","HF","CD","HF","CD","CD","CD","HF","HF","CD","CD","CD","HF","HF","CD","HF","HF","HF","HF","HF","HF","HF","HF","HF","CD","CD","CD","CD","CD","HF","HF","HF","CD","HF","CD","CD","HF","HF","CD","CD","CD","HF","CD","HF","HF","CD","HF","HF","HF","CD","CD","CD","CD","CD","HF","CD","CD","HF","HF","CD","HF","HF","CD","CD","HF","CD","HF","HF")
+mRNAlog2 <- read.table("S3_mRNA_cecum_TPMLog2_zy.txt", row.names=1, header=T, sep="\t") 
+
+CD=as.numeric(mRNAlog2['Cyp2c55',])
+HF=as.numeric(mRNAlog2['Cyp2c55',])
+
+CD <- CD[mRNAlog2Diets == "CD"]
+HF <- HF[mRNAlog2Diets == "HF"]
+
+legendposition="topleft"
+
+groupA=rm.outlier(CD)
+groupA=rm.outlier(groupA)
+
+groupB=rm.outlier(HF)
+stripchart(groupA, at=0.7, pch=21, cex=1.2, bg="lightblue", method="jitter", xlim=c(0.6, 1.3), las=1, ylim=c(10.8,14), vertical=T)
+stripchart(groupB, at=1.0, pch=21, cex=1.2, bg="orange", method="jitter", add=T, vertical=T)
+	segments(0.65, quantile(groupA, na.rm=T)[2], 0.75, quantile(groupA, na.rm=T)[2], col="red", lwd=3)	# first quantile bar for first cohort
+	segments(0.6, median(groupA, na.rm=T), 0.8, median(groupA, na.rm=T), col="red", lwd=3)	# median bar for first cohort
+	segments(0.65, quantile(groupA, na.rm=T)[4], 0.75, quantile(groupA, na.rm=T)[4], col="red", lwd=3)	# first quantile bar for first cohort
+	segments(0.7,quantile(groupA, na.rm=T)[2],0.7,quantile(groupA, na.rm=T)[4], col="red", lwd=3)
+	segments(.95, quantile(groupB, na.rm=T)[2], 1.05, quantile(groupB, na.rm=T)[2], col="red", lwd=3)	# first quantile bar for second cohort	
+	segments(.9, median(groupB, na.rm=T), 1.1, median(groupB, na.rm=T), col="red", lwd=3)	# median bar for second cohort, etc
+	segments(.95, quantile(groupB, na.rm=T)[4], 1.05, quantile(groupB, na.rm=T)[4], col="red", lwd=3)	# first quantile bar for second cohort
+	segments(1.0,quantile(groupB, na.rm=T)[2],1.0,quantile(groupB, na.rm=T)[4], col="red", lwd=3)
+# legend	
+pr = signif(t.test(groupA,groupB, paired=FALSE)$p.value,digits=2)			# This outputs the p-value of the correlation
+pletter=substitute(paste("   ", italic("p"), " = ", pr), list(pr=signif(pr[1], digits=2)))	# Makes the r-value with italicized r
+
+legend(legendposition, bg='white', bty="n", cex=1, text.col="red", legend=c(as.expression(pletter)))
 
 
 ############### Fig1 H  ; FigS2 A
