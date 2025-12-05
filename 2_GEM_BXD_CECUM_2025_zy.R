@@ -76,12 +76,51 @@ degDiet <- BXD.DEG.plot(mRNAraw, metadata, label_n = 20, group = "Diet")
 degAge <- BXD.DEG.plot(mRNAraw, metadata, label_n = 20, group = "Age")
 
 
-############### Fig1 G, Left
+############### Fig1 G, Left (within liver data)
 # Uses the below code, but on the liver data from Supplemental Data 1 from our previous publication on the same mice but looking at liver gene expression data
 # https://www.sciencedirect.com/science/article/pii/S2405471221003446?via%3Dihub#mmc8
 
 # CD and HF variables use the following row:
 # mRNA_43016_Cyp2c55
+
+## !! NOTE THAT THIS DATA IS FROM THE PREVIOUS STUDY AND IS NOT INCLUDED AS SUPPLEMENTAL IN THIS PAPER!!
+LiverDat_header=read.table("aData_S1_AllOmicsandPhenotypeData.csv", nrows=8, row.names=1, header=T, sep=",")
+LiverDat_header=LiverDat_header[,3:ncol(LiverDat_header)]
+
+liverDatlog2=read.table("aData_S1_AllOmicsandPhenotypeData.csv", row.names=1, header=T,  na.strings="", sep=",", skip=8, stringsAsFactors=FALSE)
+liverDatlog2=liverDatlog2[1:nrow(liverDatlog2),3:ncol(liverDatlog2)]
+
+livermRNAlog2Diets=as.character(LiverDat_header['Diet',])
+
+CD=as.numeric(liverDatlog2['mRNA_43016_Cyp2c55',])
+HF=as.numeric(liverDatlog2['mRNA_43016_Cyp2c55',])
+
+CD <- CD[livermRNAlog2Diets == "CD"]
+HF <- HF[livermRNAlog2Diets == "HF"]
+
+legendposition="topleft"
+
+groupA=rm.outlier(CD)
+groupA=rm.outlier(groupA)
+
+groupB=rm.outlier(HF)
+stripchart(groupA, at=0.7, pch=21, cex=1.2, bg="lightblue", method="jitter", xlim=c(0.6, 1.3), las=1, ylim=c(0,2.8), vertical=T)
+stripchart(groupB, at=1.0, pch=21, cex=1.2, bg="orange", method="jitter", add=T, vertical=T)
+	segments(0.65, quantile(groupA, na.rm=T)[2], 0.75, quantile(groupA, na.rm=T)[2], col="red", lwd=3)	# first quantile bar for first cohort
+	segments(0.6, median(groupA, na.rm=T), 0.8, median(groupA, na.rm=T), col="red", lwd=3)	# median bar for first cohort
+	segments(0.65, quantile(groupA, na.rm=T)[4], 0.75, quantile(groupA, na.rm=T)[4], col="red", lwd=3)	# first quantile bar for first cohort
+	segments(0.7,quantile(groupA, na.rm=T)[2],0.7,quantile(groupA, na.rm=T)[4], col="red", lwd=3)
+	segments(.95, quantile(groupB, na.rm=T)[2], 1.05, quantile(groupB, na.rm=T)[2], col="red", lwd=3)	# first quantile bar for second cohort	
+	segments(.9, median(groupB, na.rm=T), 1.1, median(groupB, na.rm=T), col="red", lwd=3)	# median bar for second cohort, etc
+	segments(.95, quantile(groupB, na.rm=T)[4], 1.05, quantile(groupB, na.rm=T)[4], col="red", lwd=3)	# first quantile bar for second cohort
+	segments(1.0,quantile(groupB, na.rm=T)[2],1.0,quantile(groupB, na.rm=T)[4], col="red", lwd=3)
+# legend	
+pr = signif(t.test(groupA,groupB, paired=FALSE)$p.value,digits=2)			# This outputs the p-value of the correlation
+pletter=substitute(paste("   ", italic("p"), " = ", pr), list(pr=signif(pr[1], digits=2)))	# Makes the r-value with italicized r
+
+legend(legendposition, bg='white', bty="n", cex=1, text.col="red", legend=c(as.expression(pletter)))
+
+
 
 ############### Fig1 G, Right
 
