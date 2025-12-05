@@ -166,15 +166,10 @@ MG_phyl <- BXD.Data.Pre(df = MGabun, datatype = "abundance", taxlevel = "phylum"
 BXD.Ratio.plot(MG_phyl, metadata, "p__Firmicutes", "p__Bacteroidetes")
 
 
-############### Fig2 D &  Fig3 A
+############### Fig2 D
 MG_genu <- BXD.Data.Pre(df = MGabun, datatype = "abundance", taxlevel = "genus")
 MT_genu <- BXD.Data.Pre(df = MTabun, datatype = "abundance", taxlevel = "genus")
 BXD.Stacked.plot(MG_genu, MT_genu, metadata, "taxonomy", "MG_", "MT_")
-
-MGpath_pre <- BXD.Data.Pre(df = MGpath, datatype = "pathabun")
-MTpath_pre <- BXD.Data.Pre(df = MTpath, datatype = "pathabun")
-BXD.Stacked.plot(MGpath_pre, MTpath_pre, metadata, "Pathway", "MG_", "MT_")
-
 
 ############### Fig2 E
 ### https://github.com/biobakery/maaslin3
@@ -206,3 +201,25 @@ fit_out <- maaslin3(input_data = feature_table,
                     heatmap_vars = c('Diet HF'), 
                     max_pngs = 250,
                     cores = 4)
+                    
+                    
+                    
+###### Fig3 A
+### All samples were at least 50% other, so the y-axis scale was modified to have a broken axis above 50% so the lower part of the graph was more visible.
+
+MGpath_pre <- BXD.Data.Pre(df = MGpath, datatype = "pathabun")
+MTpath_pre <- BXD.Data.Pre(df = MTpath, datatype = "pathabun")
+BXD.Stacked.plot(MGpath_pre, MTpath_pre, metadata, "Pathway", "MG_", "MT_")
+
+
+
+
+
+
+
+
+
+
+
+
+
