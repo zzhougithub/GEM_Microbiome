@@ -53,3 +53,71 @@ Most code by Ziyun Zhou, some contributions by Evan Williams and Arianna Lamanna
 Other direct work on data in the manuscript, including data tables, Arianna Lamanna, Rashi Halder, Emeline Pansart, Besma Boussoufa, Thamila Kerkour, and Evan G. Williams. Other authors (Paul Wilmes, Shaman Narayanasamy) did not work on code or data generation, but worked on text and interpretation. We would like to give appreciation to all of those who have contributed to the project, such as the initial generation of the aging cohort and the tissue collection, particularly Robert Williams and Suheeta Roy at UTHSC Memphis.
 
 Project is complete, and this code will be frozen to pair with the revised submission of this manuscript in December 2025. 
+
+————————————————————————————————————————————————————————————
+
+** Code Description
+
+All code is tested and confirmed to run in R 4.x and Python 3.x, using current versions of all libraries as of December 2025. To run the code, it is necessary to download all supplemental tables, set your working directory to load the data tables, and install all of the following libraries, including their dependencies. Afterwards, the files with names ending in the .R file extension can be copy and pasted into R, and those with .py into a Python terminal. The "2_GEM_BXD_CECUM_functions_zy.R" file must be loaded in advance before running all of the other R code, e.g. the Fig 2D and Fig3A code uses those custom functions as a dependency. 
+
+R 4.2.2 was used, with the following libraries:
+
+Rsubread 2.12.3
+vioplot 0.5.1
+dplyr 1.1.4
+tidyr 1.3.1
+tidyverse 2.0.0
+outliers 0.15
+gplots 3.2.0
+ggplot2 3.5.2
+reshape2 1.4.4
+DESeq2 1.38.3
+EnhancedVolcano 1.16.0
+ggrepel 0.9.5
+cowplot 1.2.0
+RColorBrewer 1.1-3
+ggh4x 0.3.1
+ggtext 0.1.2
+ggalluvial 0.12.5
+ggpubr 0.6.1
+lemon 0.5.0
+ggsci 3.2.0
+pheatmap 1.0.13
+clusterProfiler 4.6.2
+org.Mm.eg.db 3.20.0
+ReactomePA 1.42.0
+enrichplot 1.18.4
+DOSE 3.24.2
+glue 1.8.0
+scales 1.4.0
+GseaVis 0.0.5
+readxl 1.4.3
+maaslin3 1.10.0
+knitr 1.50
+
+Python 3.9.18 was used, with the following libraries:
+
+pandas 2.1.4
+numpy 1.23.5
+scikit-learn 1.3.0
+SHAP 0.48.0
+matplotlib.pyplot 3.8.0
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
